@@ -1,6 +1,7 @@
 import pygame
 from screeninfo import get_monitors
 import sys
+import math
 
 pygame.init()
 pygame.font.init()
@@ -14,8 +15,8 @@ BLACK = (0, 0, 0)
 WHITE = (240, 240, 240)
 HOVER = (210, 210, 210)
 
-TITLE_FONT = pygame.font.SysFont("arial", 64, bold=True)
-BUTTON_FONT = pygame.font.SysFont("arial", 32)
+TITLE_FONT = pygame.font.SysFont("comic sans mc", 64, bold=True)
+BUTTON_FONT = pygame.font.SysFont("comic sans mc", 32)
 
 clock = pygame.time.Clock()
 
@@ -47,16 +48,12 @@ class Button:
             return self.rect.collidepoint(event.pos)
         return False
 
-
-import math
-
 def draw_logo(surface):
     cx, cy = WIDTH // 2, HEIGHT // 2 - 220
 
     LINE = 6
     WHITE = (240, 240, 240)
 
-    # --- квадрат ---
     square_size = 135
     square_rect = pygame.Rect(0, 0, square_size, square_size)
     square_rect.center = (cx, cy)
@@ -68,7 +65,6 @@ def draw_logo(surface):
         border_radius=10
     )
 
-    # --- круг ---
     R = square_size / 2
     pygame.draw.circle(
         surface,
@@ -78,11 +74,9 @@ def draw_logo(surface):
         LINE
     )
 
-    # --- равносторонний треугольник ---
-    # вписан в окружность, повернут на 180°
     points = []
     for i in range(3):
-        angle = math.radians(90 + i * 120)  # вершина вниз
+        angle = math.radians(90 + i * 120)
         x = cx + R * math.cos(angle)
         y = cy + R * math.sin(angle)
         points.append((x, y))
@@ -122,7 +116,7 @@ def main():
                     running = False
 
             if new_game_btn.clicked(event):
-                print("Новая игра. Когда-нибудь тут будет игра.")
+                pass
 
             if exit_btn.clicked(event):
                 running = False
