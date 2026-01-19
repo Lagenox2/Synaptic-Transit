@@ -3,49 +3,49 @@
         {
             "type": "circle",
             "name": "A",
-            "position": [400, 100],
+            "position": [960, 120],
+            "connections": ["B"]
+        },
+        {
+            "type": "circle",
+            "name": "C",
+            "position": [1220, 160],
             "connections": ["B"]
         },
         {
             "type": "triangle",
             "name": "B",
-            "position": [400, 200],
-            "connections": ["A", "C", "E", "G"]
-        },
-        {
-            "type": "circle",
-            "name": "C",
-            "position": [600, 100],
-            "connections": ["B"]
+            "position": [960, 300],
+            "connections": ["A", "C", "Square"]
         },
         {
             "type": "circle",
             "name": "D",
-            "position": [200, 200],
+            "position": [600, 180],
             "connections": ["E"]
-        },
-        {
-            "type": "triangle",
-            "name": "E",
-            "position": [200, 300],
-            "connections": ["D", "B"]
         },
         {
             "type": "circle",
             "name": "F",
-            "position": [200, 100],
+            "position": [420, 140],
             "connections": ["G"]
         },
         {
             "type": "triangle",
+            "name": "E",
+            "position": [620, 620],
+            "connections": ["D", "G", "Square"]
+        },
+        {
+            "type": "triangle",
             "name": "G",
-            "position": [600, 300],
-            "connections": ["B", "E"]
+            "position": [1180, 620],
+            "connections": ["F", "E", "Square"]
         },
         {
             "type": "square",
             "name": "Square",
-            "position": [400, 400],
+            "position": [960, 540],
             "connections": ["B", "E", "G"]
         }
     ]
