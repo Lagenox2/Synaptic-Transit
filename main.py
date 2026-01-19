@@ -14,7 +14,7 @@ width, height = monitor.width, monitor.height
 screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
 pygame.display.set_caption("Synaptic Transit")
 
-# Определение цветов КРАТНО ДЕЛЬТЕ ИНАЧЕ ВСЁ СЛОМАЕТСЯ!!!
+# Определение цветов КРАТНО ДЕЛЬТЕ ИНАЧЕ КИРДЫК!!!
 delta = 10
 black = (0 * delta, 0 * delta, 0 * delta)  # Черный цвет
 white = (25 * delta, 25 * delta, 25 * delta)  # Белый цвет (немного затемненный)
