@@ -1,8 +1,12 @@
 import pygame
+from screeninfo import get_monitors
 
 
-WIDTH = 1920  # ширина игрового окна
-HEIGHT = 1080  # высота игрового окна
+for m in get_monitors():
+    print(f"Монитор: {m.name}, Разрешение: {m.width}x{m.height}, Рабочая область: {m.width}x{m.height}")
+    WIDTH = m.width
+    HEIGHT = m.height
+
 pygame.init()
 pygame.mixer.init()  # для звука
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
