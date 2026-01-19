@@ -1,2 +1,6 @@
 class Client:
-    pass
+    name = ''
+    connections = []
+
+    def __init__(self, name):
+        self.name = name

@@ -8,6 +8,14 @@
 Треугольник - роутер
 Всё подключено к центру (сервер)
 '''
+import client, router
+
 
 class Network:
-    pass
+    a = client.Client()
+    a = client.Client()
+    a = client.Client()
+    a = client.Client()
+    a = client.Client()
+    a = client.Client()
+    a = client.Client()
