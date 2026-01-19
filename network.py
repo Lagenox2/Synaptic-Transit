@@ -6,16 +6,17 @@
 
 Кружок - клиент
 Треугольник - роутер
-Всё подключено к центру (сервер)
+Все треугольники подключены к центру (сервер)
 '''
 import client, router
 
 
 class Network:
-    a = client.Client()
-    a = client.Client()
-    a = client.Client()
-    a = client.Client()
-    a = client.Client()
-    a = client.Client()
-    a = client.Client()
+    # соединения первого уровня
+    a = client.Client('A', ['B'])
+    b = router.Router('B', ['A', 'C'])
+    c = client.Client('C', ['B'])
+    d = client.Client('D', ['E'])
+    e = router.Router('E', ['D', 'G'])
+    f = client.Client('F', ['G', 'E'])
+    g = client.Client('G', ['F'])
