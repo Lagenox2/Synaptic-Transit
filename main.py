@@ -1,16 +1,13 @@
-# Импорт необходимых библиотек
-import pygame  # Библиотека для создания игр и графики
-from screeninfo import get_monitors  # Для получения информации о мониторах
-import sys  # Для работы с системными функциями (выход из программы)
-import math  # Математические функции (для рисования логотипа)
+import pygame
+from screeninfo import get_monitors
+import sys
+import math
 
-# Инициализация Pygame и его модуля шрифтов
-pygame.init()  # Запуск всех модулей Pygame
-pygame.font.init()  # Инициализация модуля шрифтов
+pygame.init()
+pygame.font.init()
 
 # Получение информации о первом мониторе
-monitor = get_monitors()[0]  # Берем первый монитор из списка
-# Устанавливаем ширину и высоту окна равными разрешению монитора
+monitor = get_monitors()[0]
 WIDTH, HEIGHT = monitor.width, monitor.height
 
 # Создание полноэкранного окна
@@ -20,8 +17,8 @@ pygame.display.set_caption("Synaptic Transit")
 
 # Определение цветов
 BLACK = (0, 0, 0)  # Черный цвет
-WHITE = (240, 240, 240)  # Белый цвет (немного затемненный)
-HOVER = (210, 210, 210)  # Цвет для кнопки при наведении
+WHITE = (250, 250, 250)  # Белый цвет (немного затемненный)
+HOVER = (200, 200, 200)  # Цвет для кнопки при наведении
 
 # Создание объектов шрифтов
 TITLE_FONT = pygame.font.SysFont("arial", 64, bold=True)  # Шрифт для заголовка
@@ -35,6 +32,7 @@ clock = pygame.time.Clock()
 class Button:
     def __init__(self, text, center_y):
         # Инициализация кнопки с текстом и вертикальной позицией
+        self.current_color = WHITE
         self.text = text  # Текст кнопки
         self.width = 420  # Ширина кнопки
         self.height = 80  # Высота кнопки
@@ -48,9 +46,18 @@ class Button:
 
     def draw(self, surface):
         # Отрисовка кнопки на указанной поверхности
-        mouse_pos = pygame.mouse.get_pos()  # Получение текущей позиции мыши
-        # Выбор цвета: HOVER если курсор над кнопкой, иначе WHITE
-        color = HOVER if self.rect.collidepoint(mouse_pos) else WHITE
+        mouse_pos = pygame.mouse.get_pos()
+
+        n = 10
+        target_color = HOVER if self.rect.collidepoint(mouse_pos) else WHITE
+        current = getattr(self, 'current_color', WHITE)
+        color = tuple(
+            current[i] + n if current[i] < target_color[i] else
+            current[i] - n if current[i] > target_color[i] else
+            current[i]
+            for i in range(3)
+        )
+        self.current_color = color
 
         # Отрисовка прямоугольника кнопки с закругленными углами
         pygame.draw.rect(surface, color, self.rect, border_radius=14)
