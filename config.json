@@ -1,0 +1,52 @@
+{
+    "shapes": [
+        {
+            "type": "circle",
+            "name": "A",
+            "position": [400, 100],
+            "connections": ["B"]
+        },
+        {
+            "type": "triangle",
+            "name": "B",
+            "position": [400, 200],
+            "connections": ["A", "C", "E", "G"]
+        },
+        {
+            "type": "circle",
+            "name": "C",
+            "position": [600, 100],
+            "connections": ["B"]
+        },
+        {
+            "type": "circle",
+            "name": "D",
+            "position": [200, 200],
+            "connections": ["E"]
+        },
+        {
+            "type": "triangle",
+            "name": "E",
+            "position": [200, 300],
+            "connections": ["D", "B"]
+        },
+        {
+            "type": "circle",
+            "name": "F",
+            "position": [200, 100],
+            "connections": ["G"]
+        },
+        {
+            "type": "triangle",
+            "name": "G",
+            "position": [600, 300],
+            "connections": ["B", "E"]
+        },
+        {
+            "type": "square",
+            "name": "Square",
+            "position": [400, 400],
+            "connections": ["B", "E", "G"]
+        }
+    ]
+}
