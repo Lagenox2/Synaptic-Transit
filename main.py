@@ -14,10 +14,11 @@ WIDTH, HEIGHT = monitor.width, monitor.height
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Synaptic Transit")
 
-# Определение цветов
-BLACK = (0, 0, 0)  # Черный цвет
-WHITE = (250, 250, 250)  # Белый цвет (немного затемненный)
-HOVER = (200, 200, 200)  # Цвет для кнопки при наведении
+# Определение цветов КРАТНО ДЕЛЬТЕ ИНАЧЕ ВСЁ СЛОМАЕТСЯ!!!
+Delta = 10
+BLACK = (0 * Delta, 0 * Delta, 0 * Delta)  # Черный цвет
+WHITE = (25 * Delta, 25 * Delta, 25 * Delta)  # Белый цвет (немного затемненный)
+HOVER = (19 * Delta, 2 * Delta, 25 * Delta)  # Цвет для кнопки при наведении
 
 # Создание объектов шрифтов
 TITLE_FONT = pygame.font.SysFont("arial", 64, bold=True)  # Шрифт для заголовка
@@ -45,7 +46,7 @@ class Button:
         # Отрисовка кнопки на указанной поверхности
         mouse_pos = pygame.mouse.get_pos()
 
-        n = 10
+        n = Delta
         target_color = HOVER if self.rect.collidepoint(mouse_pos) else WHITE
         current = getattr(self, 'current_color', WHITE)
         color = tuple(
