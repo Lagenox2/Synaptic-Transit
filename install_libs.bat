@@ -1,1 +1,1 @@
-pip install screeninfo
+pip install screeninfo pygame
