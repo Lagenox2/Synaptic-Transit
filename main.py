@@ -2,7 +2,7 @@ import pygame
 from screeninfo import get_monitors
 import sys
 import math
-import json
+import config
 
 pygame.init()
 pygame.font.init()
@@ -20,8 +20,10 @@ hover = (19 * delta, 2 * delta, 25 * delta)
 
 title_font = pygame.font.SysFont("arial", 64, bold=True)
 button_font = pygame.font.SysFont("arial", 32)
+object_font = pygame.font.SysFont("arial", 24, bold=True)
 
 clock = pygame.time.Clock()
+
 
 class Button:
     def __init__(self, text, center_y):
@@ -56,6 +58,7 @@ class Button:
     def clicked(self, event):
         return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos)
 
+
 def draw_logo(surface):
     cx, cy = width // 2, height // 2 - 420
     line = 8
@@ -74,43 +77,79 @@ def draw_logo(surface):
         points.append((x, y))
     pygame.draw.polygon(surface, color, points, line)
 
-def load_config(path="config.json"):
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)["shapes"]
 
-def draw_scheme(surface, shapes):
-    shape_map = {s["name"]: s for s in shapes}
+def draw_objects(surface, objects):
+    # обновляем волны
+    config.update_waves()
 
-    for s in shapes:
-        x1, y1 = s["position"]
-        for t in s["connections"]:
-            if t in shape_map:
-                x2, y2 = shape_map[t]["position"]
-                pygame.draw.line(surface, white, (x1, y1), (x2, y2), 3)
+    mouse_pos = pygame.mouse.get_pos()
 
-    for s in shapes:
-        x, y = s["position"]
-        if s["type"] == "circle":
-            pygame.draw.circle(surface, white, (x, y), 28, 4)
-        elif s["type"] == "square":
-            rect = pygame.Rect(0, 0, 60, 60)
-            rect.center = (x, y)
-            pygame.draw.rect(surface, white, rect, 4)
-        elif s["type"] == "triangle":
-            size = 34
+    # сначала волны
+    for obj in objects:
+        if obj["type"] == "circle" and "waves" in obj:
+            x, y = obj["position"]
+            for wave in obj["waves"]:
+                if wave["active"] and wave["opacity"] > 0:
+                    pygame.draw.circle(surface, wave["color"], (int(x), int(y)), int(wave["radius"]), 2)
+
+    # соединения
+    for obj in objects:
+        x1, y1 = obj["position"]
+        for conn_name in obj.get("connections", []):
+            for target in objects:
+                if target["name"] == conn_name:
+                    x2, y2 = target["position"]
+                    pygame.draw.line(surface, white, (x1, y1), (x2, y2), 3)
+                    break
+
+    # объекты с текстом
+    for obj in objects:
+        x, y = obj["position"]
+
+        # проверка наведения
+        config.check_hover(mouse_pos, obj)
+        color = config.get_hover_color(obj)
+
+        if obj["type"] == "circle":
+            pygame.draw.circle(surface, color, (int(x), int(y)), obj["radius"], 4)
+
+            # ТЕКСТ ВНУТРИ
+            text = object_font.render(obj["display_text"], True, white)
+            text_rect = text.get_rect(center=(int(x), int(y)))
+            surface.blit(text, text_rect)
+
+        elif obj["type"] == "square":
+            size = obj["size"]
+            rect = pygame.Rect(0, 0, size, size)
+            rect.center = (int(x), int(y))
+            pygame.draw.rect(surface, color, rect, 4)
+
+            # ТЕКСТ ВНУТРИ
+            text = object_font.render(obj["display_text"], True, white)
+            text_rect = text.get_rect(center=(int(x), int(y)))
+            surface.blit(text, text_rect)
+
+        elif obj["type"] == "triangle":
+            size = obj["size"]
+            half = size // 2
             points = [
-                (x, y - size),
-                (x - size, y + size),
-                (x + size, y + size)
+                (x, y - half),
+                (x - half, y + half),
+                (x + half, y + half)
             ]
-            pygame.draw.polygon(surface, white, points, 4)
+            pygame.draw.polygon(surface, color, points, 4)
+
+            # ТЕКСТ ВНУТРИ (немного выше)
+            text = object_font.render(obj["display_text"], True, white)
+            text_rect = text.get_rect(center=(int(x), int(y - half // 3)))
+            surface.blit(text, text_rect)
+
 
 def main():
     new_game_btn = Button("Новая игра", height // 2 + 40)
     exit_btn = Button("Выход", height // 2 + 150)
 
     game_started = False
-    shapes = []
 
     running = True
     while running:
@@ -124,7 +163,9 @@ def main():
             new_game_btn.draw(screen)
             exit_btn.draw(screen)
         else:
-            draw_scheme(screen, shapes)
+            # вставить уровень 1
+            objects = config.get_all_objects()
+            draw_objects(screen, objects)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -132,7 +173,16 @@ def main():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
             if not game_started and new_game_btn.clicked(event):
-                shapes = load_config()
+                # сброс и генерация
+                config.reset_all()
+
+                # генерируем объекты
+                for _ in range(5):
+                    config.randspawn(1.0, 1, True)
+                for _ in range(2):
+                    config.randspawn(1.0, 2)
+                config.randspawn(1.0, 3)
+
                 game_started = True
             if not game_started and exit_btn.clicked(event):
                 running = False
@@ -142,6 +192,7 @@ def main():
 
     pygame.quit()
     sys.exit()
+
 
 if __name__ == "__main__":
     main()

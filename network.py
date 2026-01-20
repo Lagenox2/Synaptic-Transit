@@ -1,22 +1,14 @@
-'''
-Кружок A по центру сверху, соединен с треугольником B. Кружок C справа сверху, соединен с треугольником B.
-Кружок D слева сверху, соединен с треугольником E (левый нижний угол). Кружок F слева сверху,
-соединен с треугольником G (правый нижний угол). Треугольник G соединен с треуг. E.
-Все треугольники соединены с квадратом, расположенным по центру.
-
-Кружок - клиент
-Треугольник - роутер
-Все треугольники подключены к центру (сервер)
-'''
-import client, router
-
-
 class Network:
-    # соединения первого уровня
-    a = client.Client('A', ['B'])
-    b = router.Router('B', ['A', 'C'])
-    c = client.Client('C', ['B'])
-    d = client.Client('D', ['E'])
-    e = router.Router('E', ['D', 'G'])
-    f = client.Client('F', ['G', 'E'])
-    g = client.Client('G', ['F'])
+    def __init__(self):
+        self.clients = []
+        self.routers = []
+        self.servers = []
+
+    def add_client(self, client):
+        self.clients.append(client)
+
+    def add_router(self, router):
+        self.routers.append(router)
+
+    def add_server(self, server):
+        self.servers.append(server)
