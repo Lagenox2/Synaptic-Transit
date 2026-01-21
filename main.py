@@ -187,7 +187,7 @@ def next_turn():
     x = 300 + (client_counter % 5) * 90
     c = Client(f"C{client_counter}")
     network.add_client(c)
-    objects.append(create_visual(c, "circle", (x, y)))
+    objects.append(create_visual(c, "circle", (y, y)))
 
 def main():
     new_game_btn = Button("Новая игра", (width // 2, height // 2 + 40))
