@@ -24,7 +24,6 @@ object_font = pygame.font.SysFont("arial", 24, bold=True)
 
 clock = pygame.time.Clock()
 
-
 class Button:
     def __init__(self, text, center_y):
         self.current_color = white
@@ -58,7 +57,6 @@ class Button:
     def clicked(self, event):
         return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos)
 
-
 def draw_logo(surface):
     cx, cy = width // 2, height // 2 - 420
     line = 8
@@ -76,7 +74,6 @@ def draw_logo(surface):
         y = cy + r * math.sin(angle) * 0.94
         points.append((x, y))
     pygame.draw.polygon(surface, color, points, line)
-
 
 def draw_objects(surface, objects):
     # обновляем волны
@@ -144,7 +141,6 @@ def draw_objects(surface, objects):
             text_rect = text.get_rect(center=(int(x), int(y - half // 3)))
             surface.blit(text, text_rect)
 
-
 def main():
     new_game_btn = Button("Новая игра", height // 2 + 40)
     exit_btn = Button("Выход", height // 2 + 150)
@@ -192,6 +188,7 @@ def main():
 
     pygame.quit()
     sys.exit()
+
 
 
 if __name__ == "__main__":
