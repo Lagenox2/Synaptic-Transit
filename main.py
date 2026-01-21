@@ -37,16 +37,17 @@ client_counter = 2
 
 class Button:
     def __init__(self, text, center):
-        self.color = white
         self.text = text
         self.rect = pygame.Rect(0, 0, 320, 70)
         self.rect.center = center
 
     def draw(self, surface):
-        self.color = hover if self.rect.collidepoint(pygame.mouse.get_pos()) else white
-        pygame.draw.rect(surface, self.color, self.rect, border_radius=14)
-        surface.blit(button_font.render(self.text, True, black),
-                     button_font.render(self.text, True, black).get_rect(center=self.rect.center))
+        color = hover if self.rect.collidepoint(pygame.mouse.get_pos()) else white
+        pygame.draw.rect(surface, color, self.rect, border_radius=14)
+        surface.blit(
+            button_font.render(self.text, True, black),
+            button_font.render(self.text, True, black).get_rect(center=self.rect.center)
+        )
 
     def clicked(self, e):
         return e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and self.rect.collidepoint(e.pos)
@@ -90,14 +91,22 @@ def create_visual(node, obj_type, pos):
         "connections": [],
         "radius": 32,
         "size": 70,
-        "display_text": node.name
+        "display_text": node.name,
+        "spawn": 0.0
     }
+
+def spawn_router_near(obj):
+    r = Router(f"R{len(network.routers) + 1}")
+    network.add_router(r)
+    x, y = obj["position"]
+    objects.append(create_visual(r, "triangle", (x + 180, y + 60)))
 
 def connect(a, b):
     na, nb = a["node"], b["node"]
 
     if isinstance(na, Client) and isinstance(nb, Router):
         if not nb.can_accept():
+            spawn_router_near(a)
             return
         na.connect(nb)
 
@@ -105,25 +114,35 @@ def connect(a, b):
         if not na.can_accept():
             return
         nb.connect(na)
-
     else:
         return
 
-    a["connections"].append({"to": b["name"], "progress": 0.0})
-    b["connections"].append({"to": a["name"], "progress": 1.0})
+    a["connections"].append({"to": b["name"], "progress": 0.0, "pulse": 0.0})
+    b["connections"].append({"to": a["name"], "progress": 1.0, "pulse": 0.0})
 
 def draw_objects(surface, objects, selected):
+
+    # connections
     for obj in objects:
         for conn in obj["connections"]:
             target = next(o for o in objects if o["name"] == conn["to"])
             x1, y1 = obj["position"]
             x2, y2 = target["position"]
-            conn["progress"] = min(1.0, conn["progress"] + 0.03)
+
+            conn["progress"] = min(1.0, conn["progress"] + 0.035)
+            conn["pulse"] += 0.2
+
             px = x1 + (x2 - x1) * conn["progress"]
             py = y1 + (y2 - y1) * conn["progress"]
-            pygame.draw.line(surface, white, (x1, y1), (px, py), 3)
 
+            w = 3 + int(abs(math.sin(conn["pulse"])) * 2)
+            pygame.draw.line(surface, white, (x1, y1), (px, py), w)
+
+    # objects
     for obj in objects:
+        obj["spawn"] = min(1.0, obj["spawn"] + 0.05)
+        scale = obj["spawn"]
+
         x, y = obj["position"]
         node = obj["node"]
 
@@ -132,30 +151,37 @@ def draw_objects(surface, objects, selected):
             color = bad
 
         if obj["type"] == "circle":
-            pygame.draw.circle(surface, color, (int(x), int(y)), obj["radius"], 4)
+            pygame.draw.circle(surface, color, (int(x), int(y)),
+                               int(obj["radius"] * scale), 4)
 
-        if obj["type"] == "square":
-            r = pygame.Rect(0, 0, obj["size"], obj["size"])
+        elif obj["type"] == "square":
+            s = int(obj["size"] * scale)
+            r = pygame.Rect(0, 0, s, s)
             r.center = (x, y)
             pygame.draw.rect(surface, color, r, 4)
 
-        if obj["type"] == "triangle":
-            h = obj["size"] // 2
+        elif obj["type"] == "triangle":
+            h = int(obj["size"] * scale) // 2
             pygame.draw.polygon(surface, color,
                 [(x, y - h), (x - h, y + h), (x + h, y + h)], 4)
 
-        surface.blit(object_font.render(obj["display_text"], True, white),
-                     object_font.render(obj["display_text"], True, white).get_rect(center=(x, y)))
+        if scale > 0.85:
+            surface.blit(
+                object_font.render(obj["display_text"], True, white),
+                object_font.render(obj["display_text"], True, white)
+                .get_rect(center=(x, y))
+            )
 
-        if isinstance(node, Router):
-            txt = f"{node.recieving_now} / {node.maximum_recieving}"
-            surface.blit(small_font.render(txt, True, color),
-                         (x - 20, y + obj["size"] // 2 + 6))
+            if isinstance(node, Router):
+                txt = f"{node.recieving_now} / {node.maximum_recieving}"
+                surface.blit(small_font.render(txt, True, color),
+                             (x - 20, y + obj["size"] // 2 + 6))
 
 def start_game():
     global turn, client_counter
     turn = 1
     client_counter = 2
+
     network.clients.clear()
     network.routers.clear()
     network.servers.clear()
@@ -173,21 +199,27 @@ def start_game():
     network.add_router(r2)
     network.add_server(s1)
 
-    objects.append(create_visual(c1, "circle", (300, 450)))
-    objects.append(create_visual(c2, "circle", (300, 550)))
-    objects.append(create_visual(r1, "triangle", (700, 500)))
-    objects.append(create_visual(r2, "triangle", (700, 650)))
-    objects.append(create_visual(s1, "square", (1100, 575)))
+    objects.extend([
+        create_visual(c1, "circle", (300, 450)),
+        create_visual(c2, "circle", (300, 550)),
+        create_visual(r1, "triangle", (700, 500)),
+        create_visual(r2, "triangle", (700, 650)),
+        create_visual(s1, "square", (1100, 575)),
+    ])
 
 def next_turn():
     global turn, client_counter
     turn += 1
     client_counter += 1
-    y = 500 + (client_counter % 5) * 90
-    x = 300 + (client_counter % 5) * 90
+
     c = Client(f"C{client_counter}")
     network.add_client(c)
-    objects.append(create_visual(c, "circle", (y, y)))
+
+    x = 300 + (client_counter % 5) * 100
+    y = 500 + (client_counter % 4) * 100
+
+    objects.append(create_visual(c, "circle", (x, y)))
+
 
 def main():
     new_game_btn = Button("Новая игра", (width // 2, height // 2 + 40))
@@ -202,9 +234,11 @@ def main():
 
         if not started:
             draw_logo(screen)
-            screen.blit(title_font.render("SYNAPTIC TRANSIT", True, white),
-                        title_font.render("SYNAPTIC TRANSIT", True, white)
-                        .get_rect(center=(width//2, height//2-110)))
+            screen.blit(
+                title_font.render("SYNAPTIC TRANSIT", True, white),
+                title_font.render("SYNAPTIC TRANSIT", True, white)
+                .get_rect(center=(width // 2, height // 2 - 110))
+            )
             new_game_btn.draw(screen)
             exit_btn.draw(screen)
         else:
@@ -217,10 +251,19 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-            if started and e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            if not started:
+                if new_game_btn.clicked(e):
+                    start_game()
+                    started = True
+                if exit_btn.clicked(e):
+                    pygame.quit()
+                    sys.exit()
+
+            else:
                 if next_turn_btn.clicked(e):
                     next_turn()
-                else:
+
+                if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
                     for obj in objects:
                         if point_in_object(e.pos, obj):
                             if not selected:
@@ -230,14 +273,6 @@ def main():
                                     connect(selected, obj)
                                 selected = None
                             break
-
-            if not started and new_game_btn.clicked(e):
-                start_game()
-                started = True
-
-            if not started and exit_btn.clicked(e):
-                pygame.quit()
-                sys.exit()
 
         pygame.display.flip()
         clock.tick(60)
