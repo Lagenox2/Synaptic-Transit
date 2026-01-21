@@ -9,7 +9,6 @@
 Все треугольники подключены к центру (сервер)
 '''
 
-
 class Network:
     def __init__(self):
         self.clients = []
@@ -24,3 +23,10 @@ class Network:
 
     def add_server(self, server):
         self.servers.append(server)
+
+    def find_node(self, name):
+        for group in (self.clients, self.routers, self.servers):
+            for node in group:
+                if node.name == name:
+                    return node
+        return None
