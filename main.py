@@ -18,7 +18,7 @@ width, height = monitor.width, monitor.height
 screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
 pygame.display.set_caption("Synaptic Transit")
 
-delta = 10 # кратно 10 иначе карамба
+delta = 10 # кратно 10 иначе карамба аллах бабах краш системы
 black = (0 * delta, 0 * delta, 0 * delta)
 white = (25 * delta, 25 * delta, 25 * delta)
 hover = (19 * delta, 2 * delta, 25 * delta)
