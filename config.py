@@ -1,29 +1,6 @@
-import pygame
 import random, math, time, json
+import data
 
-# константы экрана (из main.py)
-screen_width = 1920
-screen_height = 1080
-safe_zone = 75
-
-# размеры объектов
-client_radius = 50
-router_size = 100
-server_size = 100
-
-# цвета волн (кратно 10)
-wave_colors = [
-    (200, 200, 200),
-    (190, 190, 190),
-    (180, 180, 180)
-]
-hover_color = (190, 20, 250)
-
-# глобальные переменные
-all_objects = []
-client_letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-client_counter = 0
-server_counter = 0
 
 
 def update_waves():
@@ -42,7 +19,7 @@ def update_waves():
 
                     # обновляем цвет
                     base_idx = obj["waves"].index(wave) % 3
-                    base_color = wave_colors[base_idx]
+                    base_color = data.wave_colors[base_idx]
                     wave["color"] = [
                         int(base_color[0] * wave["opacity"]),
                         int(base_color[1] * wave["opacity"]),
@@ -88,14 +65,14 @@ def check_hover(mouse_pos, obj):
     return obj["hover"]
 
 def get_hover_color(obj):
-    return hover_color if obj.get("hover", False) else (255, 255, 255)
+    return data.hover if obj.get("hover", False) else (255, 255, 255)
 
 def spawn(x, y, obj_type, generate_waves=True):
     global client_counter, server_counter
 
     # Проверка на валидность координат
-    if not (safe_zone <= x <= screen_width - safe_zone and
-            safe_zone <= y <= screen_height - safe_zone):
+    if not (data.safe_zone <= x <= data.width - data.safe_zone and
+            data.safe_zone <= y <= data.height - data.safe_zone):
         return None
 
     # Проверка коллизий
@@ -107,12 +84,12 @@ def spawn(x, y, obj_type, generate_waves=True):
 
     if obj_type == 1:  # Клиент
         # буква для отображения
-        if client_counter < len(client_letters):
-            display_text = client_letters[client_counter]
+        if client_counter < len(data.client_letters):
+            display_text = data.client_letters[client_counter]
         else:
-            idx = client_counter % len(client_letters)
-            num = client_counter // len(client_letters)
-            display_text = f"{client_letters[idx]}{num}"
+            idx = client_counter % len(data.client_letters)
+            num = client_counter // len(data.client_letters)
+            display_text = f"{data.client_letters[idx]}{num}"
 
         client_counter += 1
 
@@ -122,8 +99,8 @@ def spawn(x, y, obj_type, generate_waves=True):
             current_time = time.time()
             for i in range(3):
                 wave = {
-                    "radius": client_radius + (i + 1) * 20,
-                    "color": list(wave_colors[i]),
+                    "radius": data.client_radius + (i + 1) * 20,
+                    "color": list(data.wave_colors[i]),
                     "opacity": 1.0,
                     "speed": 0.5,
                     "start_time": current_time + i * 0.2,
@@ -137,7 +114,7 @@ def spawn(x, y, obj_type, generate_waves=True):
             "name": f"C{client_counter}",
             "display_text": display_text,
             "position": [x, y],
-            "radius": client_radius,
+            "radius": data.client_radius,
             "waves": waves,
             "hover": False
         }
@@ -155,7 +132,7 @@ def spawn(x, y, obj_type, generate_waves=True):
             "name": f"R{len([o for o in all_objects if o['type'] == 'triangle']) + 1}",
             "display_text": str(connections),
             "position": [x, y],
-            "size": router_size,
+            "size": data.router_size,
             "max_connections": connections,
             "hover": False
         }
@@ -170,7 +147,7 @@ def spawn(x, y, obj_type, generate_waves=True):
             "name": f"S{server_counter}",
             "display_text": str(server_counter),
             "position": [x, y],
-            "size": server_size,
+            "size": data.server_size,
             "hover": False
         }
 
@@ -181,17 +158,11 @@ def spawn(x, y, obj_type, generate_waves=True):
     return None
 
 def randspawn(chance, spawn_type=0, waves=True):
-    if random.random() > chance:
-        return None
-
     x, y = 0, 0
-    found = False
+    for _ in range(1000):
+        x = random.randint(data.safe_zone, data.width - data.safe_zone)
+        y = random.randint(data.safe_zone, data.height - data.safe_zone)
 
-    for _ in range(100):
-        x = random.randint(safe_zone, screen_width - safe_zone)
-        y = random.randint(safe_zone, screen_height - safe_zone)
-
-        # проверка пересечений
         valid = True
         for obj in all_objects:
             ox, oy = obj["position"]
@@ -201,56 +172,29 @@ def randspawn(chance, spawn_type=0, waves=True):
                 break
 
         if valid:
-            found = True
             break
-
-    if not found:
-        return None
-
-    if spawn_type == 0:  # случайный
-        r = random.random()
-        if r < 0.79:
-            return spawn(x, y, 1, waves)
-        elif r < 0.99:
-            return spawn(x, y, 2)
         else:
-            return spawn(x, y, 3)
+            return None
 
-    elif spawn_type == 1 or spawn_type == 2 or spawn_type == 3:
-        return spawn(x, y, spawn_type, waves)
-
-    return None
+    spawn(x, y, spawn_type, )
 
 
 def import_level(filename, generate_waves=False):
-    """
-    Импортирует уровень из JSON файла (игнорируем connections)
-    filename: путь к JSON файлу
-    generate_waves: создавать ли волны для клиентов
-    """
     global all_objects, client_counter, server_counter
 
     try:
-        # Читаем JSON файл
         with open(filename, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        # Сбрасываем все объекты перед импортом
         reset_all()
 
-        # Проходим по всем объектам в JSON
         for shape in data.get("shapes", []):
             shape_type = shape.get("type", "").lower()
             position = shape.get("position", [0, 0])
             name = shape.get("name", "")
 
-            if len(position) != 2:
-                print(f"Ошибка: неверные координаты для объекта {name}")
-                continue
-
             x, y = position
 
-            # Определяем тип объекта
             obj_type = 0
             if shape_type == "circle":
                 obj_type = 1
@@ -258,9 +202,6 @@ def import_level(filename, generate_waves=False):
                 obj_type = 2
             elif shape_type == "square":
                 obj_type = 3
-            else:
-                print(f"Ошибка: неизвестный тип объекта '{shape_type}' для {name}")
-                continue
 
             # Создаем объект (игнорируем connections)
             if obj_type == 1:  # Клиент
@@ -269,15 +210,6 @@ def import_level(filename, generate_waves=False):
                 obj = spawn(x, y, 2, False, name)
             elif obj_type == 3:  # Сервер
                 obj = spawn(x, y, 3, False, name)
-
-            if obj:
-                print(f"Создан объект: {obj['name']} ({obj['type']}) на позиции ({x}, {y})")
-            else:
-                print(f"Не удалось создать объект {name} на позиции ({x}, {y})")
-
-        print(f"Уровень успешно загружен из {filename}")
-        print(f"Всего объектов: {len(all_objects)}")
-
         return True
 
     except FileNotFoundError:

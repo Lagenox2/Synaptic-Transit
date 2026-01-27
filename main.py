@@ -3,56 +3,37 @@ from screeninfo import get_monitors
 import sys
 import math
 import random
+import data
 
 from network import Network
 from client import Client
 from router import Router
 from server import Server
 
+
 pygame.init()
 pygame.font.init()
 
-monitor = get_monitors()[0]
-width, height = monitor.width, monitor.height
-
-screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
-pygame.display.set_caption('Synaptic Transit')
-
-delta = 10 # кратно 10 иначе карамба аллах бабах краш системы
-black = (0 * delta, 0 * delta, 0 * delta)
-white = (25 * delta, 25 * delta, 25 * delta)
-hover = (19 * delta, 2 * delta, 25 * delta)
-bad = (255, 80, 80)
-title_font = pygame.font.SysFont('arial', 64, bold=True)
-button_font = pygame.font.SysFont('arial', 32)
-object_font = pygame.font.SysFont('arial', 22, bold=True)
-small_font = pygame.font.SysFont('arial', 18)
-
-clock = pygame.time.Clock()
-
-network = Network()
-objects = []
-
-turn = 1
-client_counter = 2
+data.turn = 1
+data.client_counter = 2
 
 class Button:
     def __init__(self, text, center_y):
-        self.current_color = white
+        self.current_color = data.white
         self.text = text
         self.width = 420
         self.height = 80
-        self.rect = pygame.Rect((width - self.width) // 2, center_y - self.height // 2, self.width,self.height)
+        self.rect = pygame.Rect((data.width - self.width) // 2, center_y - self.height // 2, self.width,self.height)
 
     def draw(self, surface):
         mouse_pos = pygame.mouse.get_pos()
-        n = delta
-        target_color = hover if self.rect.collidepoint(mouse_pos) else white
+        n = data.delta
+        target_color = data.hover if self.rect.collidepoint(mouse_pos) else data.white
         current = self.current_color
         color = tuple(current[i] + n if current[i] < target_color[i] else current[i] - n if current[i] > target_color[i] else current[i] for i in range(3))
         self.current_color = color
         pygame.draw.rect(surface, color, self.rect, border_radius=14)
-        label = button_font.render(self.text, True, black)
+        label = data.button_font.render(self.text, True, data.black)
         label_rect = label.get_rect(center=self.rect.center)
         surface.blit(label, label_rect)
 
@@ -61,7 +42,7 @@ class Button:
 
 
 def draw_logo(surface):
-    cx, cy = width // 2, height // 2 - 420
+    cx, cy = data.width // 2, data.height // 2 - 420
     line = 8
     color = (250, 250, 250)
     square_size = 135
@@ -107,8 +88,8 @@ def point_in_object(pos, obj):
 
 def find_safe_position(objects, min_distance=75, attempts=100):
     for _ in range(attempts):
-        x = random.randint(100, width - 100)
-        y = random.randint(100, height - 100)
+        x = random.randint(100, data.width - 100)
+        y = random.randint(100, data.height - 100)
         safe = True
 
         for obj in objects:
@@ -121,7 +102,7 @@ def find_safe_position(objects, min_distance=75, attempts=100):
         if safe:
             return (x, y)
 
-    return (random.randint(100, width - 100), random.randint(100, height - 100))
+    return (random.randint(100, data.width - 100), random.randint(100, data.height - 100))
 
 
 def create_visual(node, obj_type, pos):
@@ -139,10 +120,10 @@ def create_visual(node, obj_type, pos):
 
 
 def spawn_router_near(obj):
-    r = Router(f'R{len(network.routers) + 1}')
-    network.add_router(r)
+    r = Router(f'R{len(data.network.routers) + 1}')
+    data.network.add_router(r)
     x, y = obj['position']
-    objects.append(create_visual(r, 'triangle', (x + 180, y + 60)))
+    data.objects.append(create_visual(r, 'triangle', (x + 180, y + 60)))
 
 
 def disconnect(a, b):
@@ -188,24 +169,24 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
             px = x1 + (x2 - x1) * conn['progress']
             py = y1 + (y2 - y1) * conn['progress']
             w = 3 + int(abs(math.sin(conn['pulse'])) * 2)
-            pygame.draw.line(surface, white, (x1, y1), (px, py), w)
+            pygame.draw.line(surface, data.white, (x1, y1), (px, py), w)
 
     if dragging and start_point and len(path_points) >= 1:
         mouse_x, mouse_y = pygame.mouse.get_pos()
         points = [start_point] + path_points + [(mouse_x, mouse_y)]
         for i in range(len(points) - 1):
-            pygame.draw.line(surface, white, points[i], points[i + 1], 3)
+            pygame.draw.line(surface, data.white, points[i], points[i + 1], 3)
         if len(path_points) > 0:
-            pygame.draw.circle(surface, white, points[-1], 6, 2)
+            pygame.draw.circle(surface, data.white, points[-1], 6, 2)
 
     for obj in objects:
         obj['spawn'] = min(1.0, obj['spawn'] + 0.05)
         scale = obj['spawn']
         x, y = obj['position']
         node = obj['node']
-        color = hover if selected and selected['name'] == obj['name'] else white
+        color = data.hover if selected and selected['name'] == obj['name'] else data.white
         if isinstance(node, Router) and node.recieving_now >= node.maximum_recieving:
-            color = bad
+            color = data.bad
         if obj['type'] == 'circle':
             pygame.draw.circle(surface, color, (int(x), int(y)), int(obj['radius'] * scale), 4)
         elif obj['type'] == 'square':
@@ -217,36 +198,36 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
             h = int(obj['size'] * scale) // 2
             pygame.draw.polygon(surface, color, [(x, y - h), (x - h, y + h), (x + h, y + h)], 4)
         if scale > 0.85:
-            surface.blit(object_font.render(obj['display_text'], True, white), object_font.render(obj['display_text'], True, white).get_rect(center=(x, y)))
+            surface.blit(data.object_font.render(obj['display_text'], True, data.white), data.object_font.render(obj['display_text'], True, data.white).get_rect(center=(x, y)))
             if isinstance(node, Router):
                 txt = f'{node.recieving_now} / {node.maximum_recieving}'
-                surface.blit(small_font.render(txt, True, color), (x - 20, y + obj['size'] // 2 + 6))
+                surface.blit(data.small_font.render(txt, True, color), (x - 20, y + obj['size'] // 2 + 6))
 
 
 def start_game():
     global turn, client_counter
     turn = 1
     client_counter = 2
-    network.clients.clear()
-    network.routers.clear()
-    network.servers.clear()
-    objects.clear()
+    data.network.clients.clear()
+    data.network.routers.clear()
+    data.network.servers.clear()
+    data.objects.clear()
     c1 = Client('C1')
     c2 = Client('C2')
     r1 = Router('R1')
     r2 = Router('R2')
     s1 = Server('S1')
-    network.add_client(c1)
-    network.add_client(c2)
-    network.add_router(r1)
-    network.add_router(r2)
-    network.add_server(s1)
-    pos1 = find_safe_position(objects)
-    pos2 = find_safe_position(objects)
-    pos3 = find_safe_position(objects)
-    pos4 = find_safe_position(objects)
-    pos5 = find_safe_position(objects)
-    objects.extend([
+    data.network.add_client(c1)
+    data.network.add_client(c2)
+    data.network.add_router(r1)
+    data.network.add_router(r2)
+    data.network.add_server(s1)
+    pos1 = find_safe_position(data.objects)
+    pos2 = find_safe_position(data.objects)
+    pos3 = find_safe_position(data.objects)
+    pos4 = find_safe_position(data.objects)
+    pos5 = find_safe_position(data.objects)
+    data.objects.extend([
         create_visual(c1, 'circle', pos1),
         create_visual(c2, 'circle', pos2),
         create_visual(r1, 'triangle', pos3),
@@ -260,21 +241,21 @@ def next_turn():
     turn += 1
     client_counter += 1
     c = Client(f'C{client_counter}')
-    network.add_client(c)
-    x, y = find_safe_position(objects)
-    objects.append(create_visual(c, 'circle', (x, y)))
+    data.network.add_client(c)
+    x, y = find_safe_position(data.objects)
+    data.objects.append(create_visual(c, 'circle', (x, y)))
     if client_counter % 7 == 0:
         r = Router(f'R{int(client_counter / 7 + 2)}')
-        network.add_router(r)
-        x, y = find_safe_position(objects)
-        objects.append(create_visual(r, 'triangle', (x, y)))
+        data.network.add_router(r)
+        x, y = find_safe_position(data.objects)
+        data.objects.append(create_visual(r, 'triangle', (x, y)))
 
 
 def main():
-    new_game_btn = Button('Новая игра', height // 2 + 40)
-    exit_btn = Button('Выход', height // 2 + 150)
-    next_turn_btn = Button('Следующий ход', height // 2 + 150)
-    next_turn_btn.rect.center = (width - 220, height - 80)
+    new_game_btn = Button('Новая игра', data.height // 2 + 40)
+    exit_btn = Button('Выход', data.height // 2 + 150)
+    next_turn_btn = Button('Следующий ход', data.height // 2 + 150)
+    next_turn_btn.rect.center = (data.width - 220, data.height - 80)
     selected = None
     started = False
     dragging = False
@@ -282,18 +263,18 @@ def main():
     path_points = []
 
     while True:
-        screen.fill(black)
+        data.screen.fill(data.black)
         if not started:
-            draw_logo(screen)
-            title = title_font.render('Synaptic Transit', True, white)
-            title_rect = title.get_rect(center=(width // 2, height // 2 - 110))
-            screen.blit(title, title_rect)
-            new_game_btn.draw(screen)
-            exit_btn.draw(screen)
+            draw_logo(data.screen)
+            title = data.title_font.render('Synaptic Transit', True, data.white)
+            title_rect = title.get_rect(center=(data.width // 2, data.height // 2 - 110))
+            data.screen.blit(title, title_rect)
+            new_game_btn.draw(data.screen)
+            exit_btn.draw(data.screen)
         else:
-            draw_objects(screen, objects, selected, dragging, start_point, path_points)
-            next_turn_btn.draw(screen)
-            screen.blit(small_font.render(f'Ход: {turn}', True, white), (20, 20))
+            draw_objects(data.screen, data.objects, selected, dragging, start_point, path_points)
+            next_turn_btn.draw(data.screen)
+            data.screen.blit(data.small_font.render(f'Ход: {turn}', True, data.white), (20, 20))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -316,7 +297,7 @@ def main():
                     if event.button == 1:
                         if not dragging:
                             clicked = False
-                            for obj in objects:
+                            for obj in data.objects:
                                 if point_in_object(event.pos, obj):
                                     if not selected:
                                         selected = obj
@@ -332,7 +313,7 @@ def main():
                                 path_points = []
                         else:
                             if start_point:
-                                for obj in objects:
+                                for obj in data.objects:
                                     if point_in_object(event.pos, obj):
                                         if selected and selected != obj:
                                             connect(selected, obj)
@@ -341,10 +322,10 @@ def main():
                                 else:
                                     path_points.append(event.pos)
                     elif event.button == 3:
-                        for obj in objects:
+                        for obj in data.objects:
                             if point_in_object(event.pos, obj):
                                 for conn in obj['connections']:
-                                    target = next(o for o in objects if o['name'] == conn['to'])
+                                    target = next(o for o in data.objects if o['name'] == conn['to'])
                                     disconnect(obj, target)
                                     selected = None
                                     break
@@ -358,7 +339,7 @@ def main():
                         path_points = []
 
         pygame.display.flip()
-        clock.tick(120)
+        data.clock.tick(120)
 
 
 if __name__ == '__main__':
