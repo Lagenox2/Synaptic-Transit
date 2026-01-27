@@ -1,21 +1,15 @@
 import pygame
-from screeninfo import get_monitors
 import sys
 import math
 import random
 import data
-
 from network import Network
 from client import Client
 from router import Router
 from server import Server
 
+data.network = Network()
 
-pygame.init()
-pygame.font.init()
-
-data.turn = 1
-data.client_counter = 2
 
 class Button:
     def __init__(self, text, center_y):
@@ -23,14 +17,16 @@ class Button:
         self.text = text
         self.width = 420
         self.height = 80
-        self.rect = pygame.Rect((data.width - self.width) // 2, center_y - self.height // 2, self.width,self.height)
+        self.rect = pygame.Rect((data.width - self.width) // 2, center_y - self.height // 2, self.width, self.height)
 
     def draw(self, surface):
         mouse_pos = pygame.mouse.get_pos()
         n = data.delta
         target_color = data.hover if self.rect.collidepoint(mouse_pos) else data.white
         current = self.current_color
-        color = tuple(current[i] + n if current[i] < target_color[i] else current[i] - n if current[i] > target_color[i] else current[i] for i in range(3))
+        color = tuple(
+            current[i] + n if current[i] < target_color[i] else current[i] - n if current[i] > target_color[i] else
+            current[i] for i in range(3))
         self.current_color = color
         pygame.draw.rect(surface, color, self.rect, border_radius=14)
         label = data.button_font.render(self.text, True, data.black)
@@ -39,6 +35,96 @@ class Button:
 
     def clicked(self, event):
         return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos)
+
+
+class Tutorial:
+    def __init__(self):
+        self.rect = pygame.Rect(50, data.height - 300, data.width - 100, 250)
+        self.alpha = 220
+
+    def draw(self, surface, step):
+        overlay = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, self.alpha))
+
+        mask = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, self.rect.width, self.rect.height),
+                         border_radius=10)
+        overlay.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+
+        surface.blit(overlay, self.rect)
+
+        pygame.draw.rect(surface, data.white, self.rect, 2, border_radius=10)
+
+        padding = 20
+        text_x = self.rect.x + padding + 80
+
+        if step >= 1 and step <= 3:
+            shape_x = self.rect.x + 60
+            shape_y = self.rect.y + self.rect.height // 2
+
+            if step == 1:
+                pygame.draw.circle(surface, data.white, (shape_x, shape_y), 25, 3)
+                pygame.draw.circle(surface, data.white, (shape_x, shape_y), 26, 1)
+            elif step == 2:
+                h = 25
+                points = [
+                    (shape_x, shape_y - h),
+                    (shape_x - h, shape_y + h),
+                    (shape_x + h, shape_y + h)
+                ]
+                pygame.draw.polygon(surface, data.white, points, 3)
+                pygame.draw.polygon(surface, data.white,
+                                    [(shape_x, shape_y - h - 0.5),
+                                     (shape_x - h - 0.5, shape_y + h + 0.5),
+                                     (shape_x + h + 0.5, shape_y + h + 0.5)], 1)
+            elif step == 3:
+                s = 25
+                square_rect = pygame.Rect(shape_x - s, shape_y - s, s * 2, s * 2)
+                pygame.draw.rect(surface, data.white, square_rect, 3, border_radius=3)
+                pygame.draw.rect(surface, data.white, square_rect.inflate(2, 2), 1, border_radius=4)
+
+        if step == 0:
+            text = data.intro
+        elif step == 1:
+            text = data.tutorial0
+        elif step == 2:
+            text = data.tutorial1
+        elif step == 3:
+            text = data.tutorial2
+        else:
+            text = ""
+
+        font = data.small_font
+        words = text.split()
+        lines = []
+        current_line = ""
+
+        for word in words:
+            test_line = current_line + (" " if current_line else "") + word
+            if font.size(test_line)[0] < self.rect.width - padding * 2 - 80:
+                current_line = test_line
+            else:
+                lines.append(current_line)
+                current_line = word
+
+        if current_line:
+            lines.append(current_line)
+
+        for i, line in enumerate(lines):
+            text_surface = font.render(line, True, data.white)
+            text_y = self.rect.y + padding + i * 30
+            surface.blit(text_surface, (text_x, text_y))
+
+        if step < 3:
+            continue_text = "Нажмите любую кнопку для продолжения..."
+            continue_surface = data.small_font.render(continue_text, True, (200, 200, 200))
+            continue_y = self.rect.y + self.rect.height - 40
+            surface.blit(continue_surface, (text_x, continue_y))
+        else:
+            finish_text = "Нажмите любую кнопку для начала игры..."
+            finish_surface = data.small_font.render(finish_text, True, (200, 200, 200))
+            finish_y = self.rect.y + self.rect.height - 40
+            surface.blit(finish_surface, (text_x, finish_y))
 
 
 def draw_logo(surface):
@@ -170,6 +256,8 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
             py = y1 + (y2 - y1) * conn['progress']
             w = 3 + int(abs(math.sin(conn['pulse'])) * 2)
             pygame.draw.line(surface, data.white, (x1, y1), (px, py), w)
+            if w > 3:
+                pygame.draw.line(surface, data.white, (x1, y1), (px, py), w - 1)
 
     if dragging and start_point and len(path_points) >= 1:
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -198,16 +286,16 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
             h = int(obj['size'] * scale) // 2
             pygame.draw.polygon(surface, color, [(x, y - h), (x - h, y + h), (x + h, y + h)], 4)
         if scale > 0.85:
-            surface.blit(data.object_font.render(obj['display_text'], True, data.white), data.object_font.render(obj['display_text'], True, data.white).get_rect(center=(x, y)))
+            surface.blit(data.object_font.render(obj['display_text'], True, data.white),
+                         data.object_font.render(obj['display_text'], True, data.white).get_rect(center=(x, y)))
             if isinstance(node, Router):
                 txt = f'{node.recieving_now} / {node.maximum_recieving}'
                 surface.blit(data.small_font.render(txt, True, color), (x - 20, y + obj['size'] // 2 + 6))
 
 
 def start_game():
-    global turn, client_counter
-    turn = 1
-    client_counter = 2
+    data.turn = 1
+    data.client_counter = 2
     data.network.clients.clear()
     data.network.routers.clear()
     data.network.servers.clear()
@@ -237,15 +325,14 @@ def start_game():
 
 
 def next_turn():
-    global turn, client_counter
-    turn += 1
-    client_counter += 1
-    c = Client(f'C{client_counter}')
+    data.turn += 1
+    data.client_counter += 1
+    c = Client(f'C{data.client_counter}')
     data.network.add_client(c)
     x, y = find_safe_position(data.objects)
     data.objects.append(create_visual(c, 'circle', (x, y)))
-    if client_counter % 7 == 0:
-        r = Router(f'R{int(client_counter / 7 + 2)}')
+    if data.client_counter % 7 == 0:
+        r = Router(f'R{int(data.client_counter / 7 + 2)}')
         data.network.add_router(r)
         x, y = find_safe_position(data.objects)
         data.objects.append(create_visual(r, 'triangle', (x, y)))
@@ -261,6 +348,7 @@ def main():
     dragging = False
     start_point = None
     path_points = []
+    tutorial = Tutorial()
 
     while True:
         data.screen.fill(data.black)
@@ -274,7 +362,10 @@ def main():
         else:
             draw_objects(data.screen, data.objects, selected, dragging, start_point, path_points)
             next_turn_btn.draw(data.screen)
-            data.screen.blit(data.small_font.render(f'Ход: {turn}', True, data.white), (20, 20))
+            data.screen.blit(data.small_font.render(f'Ход: {data.turn}', True, data.white), (20, 20))
+
+        if data.tutorial_active:
+            tutorial.draw(data.screen, data.tutorial_step)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -283,10 +374,22 @@ def main():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 sys.exit()
+
+            if data.tutorial_active:
+                if event.type == pygame.KEYDOWN or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                    if data.tutorial_step < 3:
+                        data.tutorial_step += 1
+                    else:
+                        data.tutorial_active = False
+                        data.tutorial_step = 0
+                continue
+
             if not started:
                 if new_game_btn.clicked(event):
                     start_game()
                     started = True
+                    data.tutorial_active = True
+                    data.tutorial_step = 0
                 if exit_btn.clicked(event):
                     pygame.quit()
                     sys.exit()

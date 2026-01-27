@@ -1,14 +1,15 @@
 import pygame
 from screeninfo import get_monitors
-
-from network import Network
+from Levels.one_text import intro, tutorial0, tutorial1, tutorial2
 
 pygame.init()
 pygame.font.init()
 
+# Туториал
+tutorial_active = False
+tutorial_step = 0  # 0 = intro, 1 = tutorial0, 2 = tutorial1, 3 = tutorial2
 
 safe_zone = 75
-
 client_radius = 50
 router_size = 100
 server_size = 100
@@ -21,7 +22,8 @@ server_counter = 0
 monitor = get_monitors()[0]
 width, height = monitor.width, monitor.height
 
-screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
+# Включаем антиалиасинг через аппаратное ускорение
+screen = pygame.display.set_mode((width, height), pygame.HWSURFACE | pygame.DOUBLEBUF)
 pygame.display.set_caption('Synaptic Transit')
 
 delta = 10
@@ -43,5 +45,7 @@ object_font = pygame.font.SysFont('arial', 22, bold=True)
 small_font = pygame.font.SysFont('arial', 18)
 
 clock = pygame.time.Clock()
-network = Network()
+network = None  # Инициализируется позже
 objects = []
+turn = 1
+client_counter = 2
