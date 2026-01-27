@@ -201,7 +201,8 @@ def create_visual(node, obj_type, pos):
         'radius': 32,
         'size': 70,
         'display_text': node.name,
-        'spawn': 0.0
+        'spawn': 0.0,
+        'unconnected_turns': 0
     }
 
 
@@ -244,6 +245,12 @@ def connect(a, b):
     b['connections'].append({'to': a['name'], 'progress': 1.0, 'pulse': 0.0, 'path': []})
 
 
+def check_client_connection(client_obj):
+    if client_obj['connections']:
+        return True
+    return False
+
+
 def draw_objects(surface, objects, selected, dragging, start_point, path_points):
     for obj in objects:
         for conn in obj['connections']:
@@ -272,9 +279,20 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
         scale = obj['spawn']
         x, y = obj['position']
         node = obj['node']
-        color = data.hover if selected and selected['name'] == obj['name'] else data.white
+
+        if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
+            blink_speed = 500
+            current_time = pygame.time.get_ticks()
+            if (current_time // blink_speed) % 2 == 0:
+                color = (255, 0, 0)
+            else:
+                color = data.white
+        else:
+            color = data.hover if selected and selected['name'] == obj['name'] else data.white
+
         if isinstance(node, Router) and node.recieving_now >= node.maximum_recieving:
             color = data.bad
+
         if obj['type'] == 'circle':
             pygame.draw.circle(surface, color, (int(x), int(y)), int(obj['radius'] * scale), 4)
         elif obj['type'] == 'square':
@@ -296,6 +314,8 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
 def start_game():
     data.turn = 1
     data.client_counter = 2
+    data.game_over = False
+    data.game_over_timer = 0
     data.network.clients.clear()
     data.network.routers.clear()
     data.network.servers.clear()
@@ -330,7 +350,19 @@ def next_turn():
     c = Client(f'C{data.client_counter}')
     data.network.add_client(c)
     x, y = find_safe_position(data.objects)
-    data.objects.append(create_visual(c, 'circle', (x, y)))
+    new_client = create_visual(c, 'circle', (x, y))
+    data.objects.append(new_client)
+
+    for obj in data.objects:
+        if obj['type'] == 'circle':
+            if not check_client_connection(obj):
+                obj['unconnected_turns'] += 1
+                if obj['unconnected_turns'] >= 3:
+                    data.game_over = True
+                    data.game_over_timer = pygame.time.get_ticks()
+            else:
+                obj['unconnected_turns'] = 0
+
     if data.client_counter % 7 == 0:
         r = Router(f'R{int(data.client_counter / 7 + 2)}')
         data.network.add_router(r)
@@ -343,6 +375,7 @@ def main():
     exit_btn = Button('Выход', data.height // 2 + 150)
     next_turn_btn = Button('Следующий ход', data.height // 2 + 150)
     next_turn_btn.rect.center = (data.width - 220, data.height - 80)
+    back_to_menu_btn = Button('В главное меню', data.height // 2 + 100)
     selected = None
     started = False
     dragging = False
@@ -352,7 +385,25 @@ def main():
 
     while True:
         data.screen.fill(data.black)
-        if not started:
+
+        if data.game_over:
+            overlay = pygame.Surface((data.width, data.height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            data.screen.blit(overlay, (0, 0))
+
+            game_over_font = pygame.font.SysFont('arial', 72, bold=True)
+            game_over_text = game_over_font.render('GAME OVER', True, (255, 0, 0))
+            game_over_rect = game_over_text.get_rect(center=(data.width // 2, data.height // 2 - 100))
+            data.screen.blit(game_over_text, game_over_rect)
+
+            reason_font = pygame.font.SysFont('arial', 32)
+            reason_text = reason_font.render('Клиент остался без подключения 3 хода', True, data.white)
+            reason_rect = reason_text.get_rect(center=(data.width // 2, data.height // 2))
+            data.screen.blit(reason_text, reason_rect)
+
+            back_to_menu_btn.draw(data.screen)
+
+        elif not started:
             draw_logo(data.screen)
             title = data.title_font.render('Synaptic Transit', True, data.white)
             title_rect = title.get_rect(center=(data.width // 2, data.height // 2 - 110))
@@ -364,7 +415,13 @@ def main():
             next_turn_btn.draw(data.screen)
             data.screen.blit(data.small_font.render(f'Ход: {data.turn}', True, data.white), (20, 20))
 
-        if data.tutorial_active:
+            for obj in data.objects:
+                if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
+                    warning_text = f"Клиент {obj['display_text']}: {obj['unconnected_turns']}/3"
+                    warning_surface = data.small_font.render(warning_text, True, (255, 0, 0))
+                    data.screen.blit(warning_surface, (20, 50 + data.objects.index(obj) * 25))
+
+        if data.tutorial_active and started and not data.game_over:
             tutorial.draw(data.screen, data.tutorial_step)
 
         for event in pygame.event.get():
@@ -375,7 +432,15 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-            if data.tutorial_active:
+            if data.game_over:
+                if back_to_menu_btn.clicked(event):
+                    data.game_over = False
+                    started = False
+                    data.tutorial_active = False
+                    data.tutorial_step = 0
+                continue
+
+            if data.tutorial_active and started:
                 if event.type == pygame.KEYDOWN or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
                     if data.tutorial_step < 3:
                         data.tutorial_step += 1

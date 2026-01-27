@@ -10,14 +10,11 @@ def update_waves():
         if obj["type"] == "circle" and "waves" in obj:
             for wave in obj["waves"]:
                 if wave["active"]:
-                    # обновляем радиус
                     wave["radius"] += wave["speed"]
 
-                    # обновляем непрозрачность
                     wave_age = current_time - wave["start_time"]
                     wave["opacity"] = max(0, 1.0 - wave_age * 0.5)
 
-                    # обновляем цвет
                     base_idx = obj["waves"].index(wave) % 3
                     base_color = data.wave_colors[base_idx]
                     wave["color"] = [
@@ -26,7 +23,6 @@ def update_waves():
                         int(base_color[2] * wave["opacity"])
                     ]
 
-                    # если волна исчезла
                     if wave["opacity"] <= 0:
                         wave["active"] = False
 
@@ -46,14 +42,12 @@ def check_hover(mouse_pos, obj):
         size = obj["size"]
         half = size // 2
 
-        # точки треугольника
         points = [
             (x, y - half),
             (x - half, y + half),
             (x + half, y + half)
         ]
 
-        # упрощенная проверка (ограничивающий прямоугольник)
         min_x = min(p[0] for p in points)
         max_x = max(p[0] for p in points)
         min_y = min(p[1] for p in points)
@@ -70,16 +64,14 @@ def get_hover_color(obj):
 def spawn(x, y, obj_type, generate_waves=True):
     global client_counter, server_counter
 
-    # Проверка на валидность координат
     if not (data.safe_zone <= x <= data.width - data.safe_zone and
             data.safe_zone <= y <= data.height - data.safe_zone):
         return None
 
-    # Проверка коллизий
     for obj in all_objects:
         ox, oy = obj["position"]
         dist = math.sqrt((x - ox) ** 2 + (y - oy) ** 2)
-        if dist < 150:  # минимальное расстояние
+        if dist < 150:
             return None
 
     if obj_type == 1:  # Клиент
