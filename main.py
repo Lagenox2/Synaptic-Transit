@@ -1,131 +1,12 @@
-import pygame
-import sys
-import math
-import random
-import data
+import pygame, sys, math, random
+import data, Levels.one_text, rendering
 from network import Network
 from client import Client
 from router import Router
 from server import Server
 
 data.network = Network()
-
-
-class Button:
-    def __init__(self, text, center_y):
-        self.current_color = data.white
-        self.text = text
-        self.width = 420
-        self.height = 80
-        self.rect = pygame.Rect((data.width - self.width) // 2, center_y - self.height // 2, self.width, self.height)
-
-    def draw(self, surface):
-        mouse_pos = pygame.mouse.get_pos()
-        n = data.delta
-        target_color = data.hover if self.rect.collidepoint(mouse_pos) else data.white
-        current = self.current_color
-        color = tuple(
-            current[i] + n if current[i] < target_color[i] else current[i] - n if current[i] > target_color[i] else
-            current[i] for i in range(3))
-        self.current_color = color
-        pygame.draw.rect(surface, color, self.rect, border_radius=14)
-        label = data.button_font.render(self.text, True, data.black)
-        label_rect = label.get_rect(center=self.rect.center)
-        surface.blit(label, label_rect)
-
-    def clicked(self, event):
-        return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(event.pos)
-
-
-class Tutorial:
-    def __init__(self):
-        self.rect = pygame.Rect(50, data.height - 300, data.width - 100, 250)
-        self.alpha = 220
-
-    def draw(self, surface, step):
-        overlay = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, self.alpha))
-
-        mask = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, self.rect.width, self.rect.height),
-                         border_radius=10)
-        overlay.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
-
-        surface.blit(overlay, self.rect)
-
-        pygame.draw.rect(surface, data.white, self.rect, 2, border_radius=10)
-
-        padding = 20
-        text_x = self.rect.x + padding + 80
-
-        if step >= 1 and step <= 3:
-            shape_x = self.rect.x + 60
-            shape_y = self.rect.y + self.rect.height // 2
-
-            if step == 1:
-                pygame.draw.circle(surface, data.white, (shape_x, shape_y), 25, 3)
-                pygame.draw.circle(surface, data.white, (shape_x, shape_y), 26, 1)
-            elif step == 2:
-                h = 25
-                points = [
-                    (shape_x, shape_y - h),
-                    (shape_x - h, shape_y + h),
-                    (shape_x + h, shape_y + h)
-                ]
-                pygame.draw.polygon(surface, data.white, points, 3)
-                pygame.draw.polygon(surface, data.white,
-                                    [(shape_x, shape_y - h - 0.5),
-                                     (shape_x - h - 0.5, shape_y + h + 0.5),
-                                     (shape_x + h + 0.5, shape_y + h + 0.5)], 1)
-            elif step == 3:
-                s = 25
-                square_rect = pygame.Rect(shape_x - s, shape_y - s, s * 2, s * 2)
-                pygame.draw.rect(surface, data.white, square_rect, 3, border_radius=3)
-                pygame.draw.rect(surface, data.white, square_rect.inflate(2, 2), 1, border_radius=4)
-
-        if step == 0:
-            text = data.intro
-        elif step == 1:
-            text = data.tutorial0
-        elif step == 2:
-            text = data.tutorial1
-        elif step == 3:
-            text = data.tutorial2
-        else:
-            text = ""
-
-        font = data.small_font
-        words = text.split()
-        lines = []
-        current_line = ""
-
-        for word in words:
-            test_line = current_line + (" " if current_line else "") + word
-            if font.size(test_line)[0] < self.rect.width - padding * 2 - 80:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                current_line = word
-
-        if current_line:
-            lines.append(current_line)
-
-        for i, line in enumerate(lines):
-            text_surface = font.render(line, True, data.white)
-            text_y = self.rect.y + padding + i * 30
-            surface.blit(text_surface, (text_x, text_y))
-
-        if step < 3:
-            continue_text = "Нажмите любую кнопку для продолжения..."
-            continue_surface = data.small_font.render(continue_text, True, (200, 200, 200))
-            continue_y = self.rect.y + self.rect.height - 40
-            surface.blit(continue_surface, (text_x, continue_y))
-        else:
-            finish_text = "Нажмите любую кнопку для начала игры..."
-            finish_surface = data.small_font.render(finish_text, True, (200, 200, 200))
-            finish_y = self.rect.y + self.rect.height - 40
-            surface.blit(finish_surface, (text_x, finish_y))
-
+one_text = Levels.one_text
 
 def draw_logo(surface):
     cx, cy = data.width // 2, data.height // 2 - 420
@@ -144,8 +25,6 @@ def draw_logo(surface):
         y = cy + r * math.sin(angle) * 0.94
         points.append((x, y))
     pygame.draw.polygon(surface, color, points, line)
-
-
 def point_in_object(pos, obj):
     mx, my = pos
     x, y = obj['position']
@@ -170,8 +49,6 @@ def point_in_object(pos, obj):
         b3 = s((mx, my), p3, p1) < 0
         return b1 == b2 == b3
     return None
-
-
 def find_safe_position(objects, min_distance=75, attempts=100):
     for _ in range(attempts):
         x = random.randint(100, data.width - 100)
@@ -189,8 +66,6 @@ def find_safe_position(objects, min_distance=75, attempts=100):
             return (x, y)
 
     return (random.randint(100, data.width - 100), random.randint(100, data.height - 100))
-
-
 def create_visual(node, obj_type, pos):
     return {
         'name': node.name,
@@ -204,15 +79,11 @@ def create_visual(node, obj_type, pos):
         'spawn': 0.0,
         'unconnected_turns': 0
     }
-
-
 def spawn_router_near(obj):
     r = Router(f'R{len(data.network.routers) + 1}')
     data.network.add_router(r)
     x, y = obj['position']
     data.objects.append(create_visual(r, 'triangle', (x + 180, y + 60)))
-
-
 def disconnect(a, b):
     a_name, b_name = a['name'], b['name']
     a['connections'] = [conn for conn in a['connections'] if conn['to'] != b_name]
@@ -226,8 +97,6 @@ def disconnect(a, b):
         nb.disconnect(na)
     elif isinstance(na, Server) and isinstance(nb, Router):
         na.disconnect(nb)
-
-
 def connect(a, b):
     na, nb = a['node'], b['node']
     if isinstance(na, Client) and isinstance(nb, Router):
@@ -243,14 +112,10 @@ def connect(a, b):
         return
     a['connections'].append({'to': b['name'], 'progress': 0.0, 'pulse': 0.0, 'path': []})
     b['connections'].append({'to': a['name'], 'progress': 1.0, 'pulse': 0.0, 'path': []})
-
-
 def check_client_connection(client_obj):
     if client_obj['connections']:
         return True
     return False
-
-
 def draw_objects(surface, objects, selected, dragging, start_point, path_points):
     for obj in objects:
         for conn in obj['connections']:
@@ -371,17 +236,19 @@ def next_turn():
 
 
 def main():
-    new_game_btn = Button('Новая игра', data.height // 2 + 40)
-    exit_btn = Button('Выход', data.height // 2 + 150)
-    next_turn_btn = Button('Следующий ход', data.height // 2 + 150)
+
+    new_game_btn = rendering.Button('Новая игра', data.height // 2 + 40)
+    exit_btn = rendering.Button('Выход', data.height // 2 + 150)
+    next_turn_btn = rendering.Button('Следующий ход', data.height // 2 + 150)
     next_turn_btn.rect.center = (data.width - 220, data.height - 80)
-    back_to_menu_btn = Button('В главное меню', data.height // 2 + 100)
+    back_to_menu_btn = rendering.Button('В главное меню', data.height // 2 + 100)
+
     selected = None
     started = False
     dragging = False
     start_point = None
     path_points = []
-    tutorial = Tutorial()
+    tutorial = Levels.one_text.Tutorial()
 
     while True:
         data.screen.fill(data.black)
@@ -410,6 +277,7 @@ def main():
             data.screen.blit(title, title_rect)
             new_game_btn.draw(data.screen)
             exit_btn.draw(data.screen)
+
         else:
             draw_objects(data.screen, data.objects, selected, dragging, start_point, path_points)
             next_turn_btn.draw(data.screen)
@@ -428,6 +296,7 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 sys.exit()

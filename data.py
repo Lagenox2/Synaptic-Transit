@@ -18,8 +18,8 @@ server_size = 100
 
 all_objects = []
 client_letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-client_counter = 0
-server_counter = 0
+turn = 1
+client_counter = 2
 
 monitor = get_monitors()[0]
 width, height = monitor.width, monitor.height
@@ -48,5 +48,3 @@ small_font = pygame.font.SysFont('arial', 18)
 clock = pygame.time.Clock()
 network = None
 objects = []
-turn = 1
-client_counter = 2
