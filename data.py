@@ -18,9 +18,12 @@ server_size = 100
 
 all_objects = []
 client_letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-turn = 1
 client_counter = 2
-last_turn_time = 0  # Добавлено для автосмены ходов
+
+turn = 1
+turn_update = 20
+last_turn_time = 0
+times = 0
 
 monitor = get_monitors()[0]
 width, height = monitor.width, monitor.height
