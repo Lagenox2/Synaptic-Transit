@@ -1,5 +1,5 @@
 import pygame, sys, math, random
-import data, levels.one_text, rendering, config
+import data, Levels.one_text, rendering, config
 from object.network import Network
 from object.client import Client
 from object.router import Router
@@ -7,7 +7,7 @@ from object.server import Server
 import time
 
 data.network = Network()
-one_text = levels.one_text
+one_text = Levels.one_text
 
 def draw_logo(surface):
     cx, cy = data.width // 2, data.height // 2 - 420
