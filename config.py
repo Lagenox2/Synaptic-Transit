@@ -1,5 +1,6 @@
 import random, math, time, json
 import data
+from data import omega
 
 from object.client import Client
 from object.router import Router
@@ -165,7 +166,8 @@ def randspawn(obj_type=None):
                 else:
                     return spawn(x, y, 'server')
 
-    data.win_timer += 1
+    if not omega:
+        data.win_timer += 1
     return None
 
 

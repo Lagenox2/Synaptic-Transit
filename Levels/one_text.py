@@ -11,20 +11,21 @@ class Tutorial:
     def __init__(self):
         self.rect = pygame.Rect(50, data.height - 300, data.width - 100, 250)
         self.alpha = 220
+        self.font_size = 40
 
     def draw(self, surface, step):
         overlay = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, self.alpha))
 
         mask = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
-        pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, self.rect.width, self.rect.height),border_radius=10)
+        pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, self.rect.width, self.rect.height),border_radius=30)
         overlay.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
         surface.blit(overlay, self.rect)
 
-        pygame.draw.rect(surface, data.white, self.rect, 2, border_radius=10)
+        pygame.draw.rect(surface, data.white, self.rect, 2, border_radius=30)
 
-        padding = 20
+        padding = 80
         text_x = self.rect.x + padding + 80
 
         if step >= 1 and step <= 3:
@@ -63,14 +64,14 @@ class Tutorial:
         else:
             text = ""
 
-        font = data.small_font
+        font = pygame.font.Font(None, self.font_size)
         words = text.split()
         lines = []
         current_line = ""
 
         for word in words:
             test_line = current_line + (" " if current_line else "") + word
-            if font.size(test_line)[0] < self.rect.width - padding * 2 - 80:
+            if font.size(test_line)[0] < self.rect.width - padding * 2 - 20:
                 current_line = test_line
             else:
                 lines.append(current_line)
@@ -86,11 +87,11 @@ class Tutorial:
 
         if step < 3:
             continue_text = "Нажмите любую кнопку для продолжения..."
-            continue_surface = data.small_font.render(continue_text, True, (200, 200, 200))
+            continue_surface = font.render(continue_text, True, (200, 200, 200))
             continue_y = self.rect.y + self.rect.height - 40
             surface.blit(continue_surface, (text_x, continue_y))
         else:
             finish_text = "Нажмите любую кнопку для начала игры..."
-            finish_surface = data.small_font.render(finish_text, True, (200, 200, 200))
+            finish_surface = font.render(finish_text, True, (200, 200, 200))
             finish_y = self.rect.y + self.rect.height - 40
             surface.blit(finish_surface, (text_x, finish_y))

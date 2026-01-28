@@ -1,8 +1,8 @@
 import pygame
 from screeninfo import get_monitors
-from Levels.one_text import intro, tutorial0, tutorial1, tutorial2
+from levels.one_text import intro, tutorial0, tutorial1, tutorial2
 
-test = False
+test = True
 
 pygame.init()
 pygame.font.init()

@@ -1,5 +1,8 @@
+from stat import FILE_ATTRIBUTE_ARCHIVE
+
 import pygame, sys, math, random
-import data, Levels.one_text, rendering, config
+import data, levels.one_text, rendering, config
+from data import omega_unlock, game_over
 from object.network import Network
 from object.client import Client
 from object.router import Router
@@ -7,7 +10,7 @@ from object.server import Server
 import time
 
 data.network = Network()
-one_text = Levels.one_text
+one_text = levels.one_text
 
 def draw_logo(surface):
     cx, cy = data.width // 2, data.height // 2 - 420
@@ -294,7 +297,7 @@ def main():
         if started and not data.game_over and data.times - data.last_turn_time >= data.turn_update:
             next_turn()
 
-        if data.win_timer >= 10:
+        if data.win_timer >= 10 and not data.omega:
             data.win = True
 
         if data.test and pygame.key.get_pressed()[pygame.K_UP]:
@@ -312,12 +315,14 @@ def main():
             data.screen.blit(texts, texts.get_rect(center=(data.width // 2, data.height // 2 - 100)))
 
             reason_font = pygame.font.SysFont('arial', 32)
-            reason_text = reason_font.render('Клиент остался без подключения 3 хода', True, data.white)
+            reason_text = reason_font.render('Клиент остался без подключения 5 ходов', True, data.white)
             data.screen.blit(reason_text, reason_text.get_rect(center=(data.width // 2, data.height // 2)))
+
+            data.win = True
 
             back_to_menu_btn.draw(data.screen)
 
-        if data.win:
+        elif data.win:
             overlay = pygame.Surface((data.width, data.height), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 180))
             data.screen.blit(overlay, (0, 0))
@@ -337,7 +342,7 @@ def main():
             data.screen.blit(title, title_rect)
             new_game_btn.draw(data.screen)
             exit_btn.draw(data.screen)
-            if not data.win or data.test:
+            if omega_unlock or data.test:
                 omega_game_btd.draw(data.screen)
 
         else:
@@ -357,7 +362,7 @@ def main():
             warning_y = 80
             for obj in data.objects:
                 if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
-                    warning_text = f"Клиент {obj['display_text']}: {obj['unconnected_turns']}/3 → {obj.get('required_server', '?')}"
+                    warning_text = f"Клиент {obj['display_text']}: {obj['unconnected_turns']}/5  → {obj.get('required_server', '?')}"
                     warning_surface = data.small_font.render(warning_text, True, (255, 0, 0))
                     data.screen.blit(warning_surface, (20, warning_y))
                     warning_y += 25
@@ -374,7 +379,7 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-            if data.game_over or data.win:
+            if data.win:
                 if back_to_menu_btn.clicked(event):
                     data.game_over = False
                     started = False
