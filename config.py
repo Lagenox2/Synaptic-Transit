@@ -165,9 +165,7 @@ def randspawn(obj_type=None):
                 else:
                     return spawn(x, y, 'server')
 
-        else:
-            data.win_timer += 1
-
+    data.win_timer += 1
     return None
 
 
