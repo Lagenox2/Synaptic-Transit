@@ -9,7 +9,6 @@ import time
 data.network = Network()
 one_text = Levels.one_text
 
-
 def draw_logo(surface):
     cx, cy = data.width // 2, data.height // 2 - 420
     line = 8
@@ -254,7 +253,6 @@ def start_game():
 
 
 def assign_required_server(client_obj):
-    """Назначает клиенту случайный сервер"""
     available_servers = [obj for obj in data.objects if obj['type'] == 'square']
     if available_servers:
         server = random.choice(available_servers)
@@ -272,17 +270,13 @@ def next_turn():
 
     if new_client is None:
         data.client_counter -= 1
-    else:
-        # Назначаем случайный сервер новому клиенту
-        assign_required_server(new_client)
 
-        # Увеличиваем счетчик клиентов в data
+    else:
+        assign_required_server(new_client)
         data.client_counter = len([obj for obj in data.objects if obj['type'] == 'circle'])
 
-    # Проверяем подключение всех клиентов (кроме нового)
     for obj in data.objects:
         if obj['type'] == 'circle' and isinstance(obj['node'], Client):
-            # Если это НЕ новый клиент
             if obj != new_client:
                 if not check_client_connection(obj):
                     obj['unconnected_turns'] += 1
@@ -296,7 +290,7 @@ def next_turn():
         if obj['type'] == 'circle' and isinstance(obj['node'], Client):
             assign_required_server(obj)
 
-    if data.client_counter % 10 == 0:
+    if data.client_counter % 5 == 0:
         config.randspawn('router')
 
     data.last_turn_time = time.time()
@@ -317,11 +311,11 @@ def main():
     tutorial = Levels.one_text.Tutorial()
 
     while True:
-        current_time = time.time()
+        if data.turn != 1:
+            data.times = time.time()
         data.screen.fill(data.black)
 
-        # Автоматическая смена хода каждые 10 секунд
-        if started and not data.game_over and current_time - data.last_turn_time >= 10:
+        if started and not data.game_over and data.times - data.last_turn_time >= data.turn_update:
             next_turn()
 
         if data.game_over:
@@ -353,15 +347,11 @@ def main():
             draw_objects(data.screen, data.objects, selected, dragging, start_point, path_points)
             next_turn_btn.draw(data.screen)
 
-            # Отображаем информацию о ходе и таймере
             data.screen.blit(data.small_font.render(f'Ход: {data.turn}', True, data.white), (20, 20))
 
-            # Таймер до следующего хода
-            time_left = max(0, 10 - (current_time - data.last_turn_time))
-            timer_text = f'Следующий ход через: {time_left:.1f}с'
-            data.screen.blit(data.small_font.render(timer_text, True, data.white), (20, 50))
+            if data.turn != 1:
+                data.screen.blit(data.small_font.render(f'Следующий ход через: {max(0, min(data.turn_update, data.turn_update - (data.times - data.last_turn_time))):.1f}с', True, data.white), (20, 50))
 
-            # Предупреждения для клиентов
             warning_y = 80
             for obj in data.objects:
                 if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
