@@ -9,6 +9,9 @@
 Все треугольники подключены к центру (сервер)
 '''
 
+
+
+
 class Network:
     def __init__(self):
         self.clients = []

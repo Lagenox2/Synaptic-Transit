@@ -1,6 +1,10 @@
 import random, math, time, json
 import data
 
+# Глобальные счетчики
+client_counter = 0
+server_counter = 0
+all_objects = []  # Для совместимости
 
 
 def update_waves():
@@ -25,6 +29,7 @@ def update_waves():
 
                     if wave["opacity"] <= 0:
                         wave["active"] = False
+
 
 def check_hover(mouse_pos, obj):
     x, y = obj["position"]
@@ -58,117 +63,140 @@ def check_hover(mouse_pos, obj):
 
     return obj["hover"]
 
+
 def get_hover_color(obj):
     return data.hover if obj.get("hover", False) else (255, 255, 255)
 
-def spawn(x, y, obj_type, generate_waves=True):
+
+def spawn_node(x, y, obj_type, name=None):
+    """Создает узел сети и соответствующий визуальный объект"""
+    from client import Client
+    from router import Router
+    from server import Server
+
     global client_counter, server_counter
 
     if not (data.safe_zone <= x <= data.width - data.safe_zone and
             data.safe_zone <= y <= data.height - data.safe_zone):
         return None
 
-    for obj in all_objects:
-        ox, oy = obj["position"]
-        dist = math.sqrt((x - ox) ** 2 + (y - oy) ** 2)
-        if dist < 150:
+    # Проверяем расстояние до других объектов
+    for obj in data.objects:
+        ox, oy = obj['position']
+        dist = math.hypot(x - ox, y - oy)
+        if dist < 150:  # Минимальное расстояние между объектами
             return None
 
+    # Создаем соответствующий узел сети
+    node = None
+    display_name = ""
+
+    if obj_type == 'client':
+        if name is None:
+            name = f'C{len(data.network.clients) + 1}'
+        node = Client(name)
+        data.network.add_client(node)
+        display_name = name
+
+    elif obj_type == 'router':
+        if name is None:
+            name = f'R{len(data.network.routers) + 1}'
+        node = Router(name)
+        data.network.add_router(node)
+        display_name = name
+
+    elif obj_type == 'server':
+        if name is None:
+            name = f'S{len(data.network.servers) + 1}'
+        node = Server(name)
+        data.network.add_server(node)
+        display_name = name
+    else:
+        return None
+
+    # Создаем визуальный объект
+    visual_obj = {
+        'name': name,
+        'node': node,
+        'type': 'circle' if obj_type == 'client' else 'triangle' if obj_type == 'router' else 'square',
+        'position': (x, y),
+        'connections': [],
+        'radius': 32 if obj_type == 'client' else 0,
+        'size': 70,
+        'display_text': display_name,
+        'spawn': 0.0,
+        'unconnected_turns': 0,
+        'required_server': None if obj_type != 'client' else None
+    }
+
+    # Для роутеров показываем количество подключений
+    if obj_type == 'router':
+        visual_obj['display_text'] = f"{node.recieving_now}/{node.maximum_recieving}"
+
+    data.objects.append(visual_obj)
+    return visual_obj
+
+
+def spawn(x, y, obj_type, generate_waves=True, name=None):
+    """Создает только визуальный объект (для обратной совместимости)"""
     if obj_type == 1:  # Клиент
-        # буква для отображения
-        if client_counter < len(data.client_letters):
-            display_text = data.client_letters[client_counter]
-        else:
-            idx = client_counter % len(data.client_letters)
-            num = client_counter // len(data.client_letters)
-            display_text = f"{data.client_letters[idx]}{num}"
-
-        client_counter += 1
-
-        # создаем волны если нужно
-        waves = []
-        if generate_waves:
-            current_time = time.time()
-            for i in range(3):
-                wave = {
-                    "radius": data.client_radius + (i + 1) * 20,
-                    "color": list(data.wave_colors[i]),
-                    "opacity": 1.0,
-                    "speed": 0.5,
-                    "start_time": current_time + i * 0.2,
-                    "active": True
-                }
-                waves.append(wave)
-
-        # объект клиента
-        client_obj = {
-            "type": "circle",
-            "name": f"C{client_counter}",
-            "display_text": display_text,
-            "position": [x, y],
-            "radius": data.client_radius,
-            "waves": waves,
-            "hover": False
-        }
-
-        all_objects.append(client_obj)
-        return client_obj
-
+        return spawn_node(x, y, 'client', name)
     elif obj_type == 2:  # Роутер
-        # количество соединений
-        connections = random.randint(3, 10)
-
-        # объект роутера
-        router_obj = {
-            "type": "triangle",
-            "name": f"R{len([o for o in all_objects if o['type'] == 'triangle']) + 1}",
-            "display_text": str(connections),
-            "position": [x, y],
-            "size": data.router_size,
-            "max_connections": connections,
-            "hover": False
-        }
-
-        all_objects.append(router_obj)
-        return router_obj
-
+        return spawn_node(x, y, 'router', name)
     elif obj_type == 3:  # Сервер
-        # объект сервера
-        server_obj = {
-            "type": "square",
-            "name": f"S{server_counter}",
-            "display_text": str(server_counter),
-            "position": [x, y],
-            "size": data.server_size,
-            "hover": False
-        }
-
-        server_counter += 1
-        all_objects.append(server_obj)
-        return server_obj
-
+        return spawn_node(x, y, 'server', name)
     return None
 
-def randspawn(chance, spawn_type=0, waves=True):
-    x, y = 0, 0
+
+def randspawn(obj_type=None):
     for _ in range(1000):
         x = random.randint(data.safe_zone, data.width - data.safe_zone)
         y = random.randint(data.safe_zone, data.height - data.safe_zone)
 
-        valid = True
-        for obj in all_objects:
-            ox, oy = obj["position"]
-            dist = math.sqrt((x - ox) ** 2 + (y - oy) ** 2)
+        safe = True
+        for obj in data.objects:
+            ox, oy = obj['position']
+            dist = math.hypot(x - ox, y - oy)
             if dist < 150:
-                valid = False
+                safe = False
                 break
 
-        if valid:
-            break
-        else:
-            return None
+        if safe:
+            if obj_type == 'client':
+                return spawn_node(x, y, 'client')
+            elif obj_type == 'router':
+                return spawn_node(x, y, 'router')
+            elif obj_type == 'server':
+                return spawn_node(x, y, 'server')
+            else:
+                nova = random.random()
+                if nova <= 0.8:
+                    return spawn_node(x, y, 'client')
+                elif 0.8 > nova <= 0.95:
+                    return spawn_node(x, y, 'router')
+                else:
+                    return spawn_node(x, y, 'server')
 
-    spawn(x, y, spawn_type, )
+    return None
+
+
+def find_safe_position(min_distance=150, attempts=500):
+    for _ in range(attempts):
+        x = random.randint(data.safe_zone, data.width - data.safe_zone)
+        y = random.randint(data.safe_zone, data.height - data.safe_zone)
+        safe = True
+
+        for obj in data.objects:
+            ox, oy = obj['position']
+            distance = math.hypot(x - ox, y - oy)
+            if distance < min_distance:
+                safe = False
+                break
+
+        if safe:
+            return (x, y)
+
+    return None
 
 
 def import_level(filename, generate_waves=False):
@@ -176,43 +204,32 @@ def import_level(filename, generate_waves=False):
 
     try:
         with open(filename, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+            level_data = json.load(f)
 
         reset_all()
 
-        for shape in data.get("shapes", []):
+        for shape in level_data.get("shapes", []):
             shape_type = shape.get("type", "").lower()
             position = shape.get("position", [0, 0])
             name = shape.get("name", "")
 
             x, y = position
 
-            obj_type = 0
             if shape_type == "circle":
-                obj_type = 1
+                spawn_node(x, y, 'client', name)
             elif shape_type == "triangle":
-                obj_type = 2
+                spawn_node(x, y, 'router', name)
             elif shape_type == "square":
-                obj_type = 3
-
-            # Создаем объект (игнорируем connections)
-            if obj_type == 1:  # Клиент
-                obj = spawn(x, y, 1, generate_waves, name)
-            elif obj_type == 2:  # Роутер
-                obj = spawn(x, y, 2, False, name)
-            elif obj_type == 3:  # Сервер
-                obj = spawn(x, y, 3, False, name)
+                spawn_node(x, y, 'server', name)
         return True
 
     except FileNotFoundError:
-        print(f"Ошибка: файл {filename} не найден")
         return False
     except json.JSONDecodeError as e:
-        print(f"Ошибка парсинга JSON: {e}")
         return False
     except Exception as e:
-        print(f"Неизвестная ошибка при загрузке уровня: {e}")
         return False
+
 
 def reset_all():
     global all_objects, client_counter, server_counter
@@ -220,5 +237,13 @@ def reset_all():
     client_counter = 0
     server_counter = 0
 
+    # Также сбрасываем данные игры
+    data.objects.clear()
+    if data.network:
+        data.network.clients.clear()
+        data.network.routers.clear()
+        data.network.servers.clear()
+
+
 def get_all_objects():
-    return all_objects
+    return data.objects

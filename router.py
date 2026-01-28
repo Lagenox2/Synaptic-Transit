@@ -1,26 +1,31 @@
-import random
-
 class Router:
     def __init__(self, name):
         self.name = name
-        self.connections = []
-        self.maximum_recieving = random.randint(4, 10)
+        self.connected_clients = []
+        self.connected_servers = []
+        self.connected_routers = []  # Для связи между роутерами
+        self.maximum_recieving = 5  # Максимальное количество подключений
         self.recieving_now = 0
 
-    def accept_connection(self, node):
-        if self.recieving_now >= self.maximum_recieving:
-            return False
-        self.connections.append(node.name)
-        self.recieving_now += 1
-        return True
+    def add_client(self, client):
+        if self.can_accept():
+            self.connected_clients.append(client)
+            self.recieving_now += 1
 
-    def remove_connection(self, node):
-        if node.name in self.connections:
-            self.connections.remove(node.name)
-            self.recieving_now = max(0, self.recieving_now - 1)
+    def remove_client(self, client):
+        if client in self.connected_clients:
+            self.connected_clients.remove(client)
+            self.recieving_now -= 1
+
+    def connect_server(self, server):
+        if self.can_accept():
+            self.connected_servers.append(server)
+            self.recieving_now += 1
+
+    def disconnect_server(self, server):
+        if server in self.connected_servers:
+            self.connected_servers.remove(server)
+            self.recieving_now -= 1
 
     def can_accept(self):
         return self.recieving_now < self.maximum_recieving
-
-    def disconnect(self, other):
-        self.remove_connection(other)

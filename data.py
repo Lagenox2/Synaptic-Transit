@@ -11,7 +11,7 @@ tutorial_step = 0  # 0 = intro, 1 = tutorial0, 2 = tutorial1, 3 = tutorial2
 game_over = False
 game_over_timer = 0
 
-safe_zone = 55
+safe_zone = 100  # Увеличена безопасная зона
 client_radius = 50
 router_size = 100
 server_size = 100
@@ -20,6 +20,7 @@ all_objects = []
 client_letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 turn = 1
 client_counter = 2
+last_turn_time = 0  # Добавлено для автосмены ходов
 
 monitor = get_monitors()[0]
 width, height = monitor.width, monitor.height
