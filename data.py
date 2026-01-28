@@ -1,6 +1,8 @@
 import pygame
 from screeninfo import get_monitors
-from Levels.one_text import intro, tutorial0, tutorial1, tutorial2
+from levels.one_text import intro, tutorial0, tutorial1, tutorial2
+
+test = False
 
 pygame.init()
 pygame.font.init()
@@ -10,6 +12,10 @@ tutorial_step = 0  # 0 = intro, 1 = tutorial0, 2 = tutorial1, 3 = tutorial2
 
 game_over = False
 game_over_timer = 0
+win = False
+win_timer = 0
+omega_unlock = False
+omega = False
 
 safe_zone = 100  # Увеличена безопасная зона
 client_radius = 50

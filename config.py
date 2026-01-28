@@ -1,6 +1,10 @@
 import random, math, time, json
 import data
 
+from object.client import Client
+from object.router import Router
+from object.server import Server
+
 # Глобальные счетчики
 client_counter = 0
 server_counter = 0
@@ -68,26 +72,24 @@ def get_hover_color(obj):
     return data.hover if obj.get("hover", False) else (255, 255, 255)
 
 
-def spawn_node(x, y, obj_type, name=None):
-    """Создает узел сети и соответствующий визуальный объект"""
-    from client import Client
-    from router import Router
-    from server import Server
-
-    global client_counter, server_counter
+def spawn(x, y, obj_type, name=None):
+    if obj_type == 1:
+        obj_type = 'client'
+    elif obj_type == 2:
+        obj_type = 'router'
+    elif obj_type == 3:
+        obj_type = 'server'
 
     if not (data.safe_zone <= x <= data.width - data.safe_zone and
             data.safe_zone <= y <= data.height - data.safe_zone):
         return None
 
-    # Проверяем расстояние до других объектов
     for obj in data.objects:
         ox, oy = obj['position']
         dist = math.hypot(x - ox, y - oy)
-        if dist < 150:  # Минимальное расстояние между объектами
+        if dist < 150:
             return None
 
-    # Создаем соответствующий узел сети
     node = None
     display_name = ""
 
@@ -114,7 +116,6 @@ def spawn_node(x, y, obj_type, name=None):
     else:
         return None
 
-    # Создаем визуальный объект
     visual_obj = {
         'name': name,
         'node': node,
@@ -129,24 +130,11 @@ def spawn_node(x, y, obj_type, name=None):
         'required_server': None if obj_type != 'client' else None
     }
 
-    # Для роутеров показываем количество подключений
     if obj_type == 'router':
-        visual_obj['display_text'] = f"{node.recieving_now}/{node.maximum_recieving}"
+        visual_obj['display_text'] = f"{node.recieving_now}/{node.max_connected}"
 
     data.objects.append(visual_obj)
     return visual_obj
-
-
-def spawn(x, y, obj_type, generate_waves=True, name=None):
-    """Создает только визуальный объект (для обратной совместимости)"""
-    if obj_type == 1:  # Клиент
-        return spawn_node(x, y, 'client', name)
-    elif obj_type == 2:  # Роутер
-        return spawn_node(x, y, 'router', name)
-    elif obj_type == 3:  # Сервер
-        return spawn_node(x, y, 'server', name)
-    return None
-
 
 def randspawn(obj_type=None):
     for _ in range(1000):
@@ -163,19 +151,22 @@ def randspawn(obj_type=None):
 
         if safe:
             if obj_type == 'client':
-                return spawn_node(x, y, 'client')
+                return spawn(x, y, 'client')
             elif obj_type == 'router':
-                return spawn_node(x, y, 'router')
+                return spawn(x, y, 'router')
             elif obj_type == 'server':
-                return spawn_node(x, y, 'server')
+                return spawn(x, y, 'server')
             else:
                 nova = random.random()
                 if nova <= 0.8:
-                    return spawn_node(x, y, 'client')
+                    return spawn(x, y, 'client')
                 elif 0.8 > nova <= 0.95:
-                    return spawn_node(x, y, 'router')
+                    return spawn(x, y, 'router')
                 else:
-                    return spawn_node(x, y, 'server')
+                    return spawn(x, y, 'server')
+
+        else:
+            data.win_timer += 1
 
     return None
 
@@ -216,11 +207,11 @@ def import_level(filename, generate_waves=False):
             x, y = position
 
             if shape_type == "circle":
-                spawn_node(x, y, 'client', name)
+                spawn(x, y, 'client', name)
             elif shape_type == "triangle":
-                spawn_node(x, y, 'router', name)
+                spawn(x, y, 'router', name)
             elif shape_type == "square":
-                spawn_node(x, y, 'server', name)
+                spawn(x, y, 'server', name)
         return True
 
     except FileNotFoundError:

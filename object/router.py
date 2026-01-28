@@ -1,10 +1,12 @@
+import random
+
 class Router:
     def __init__(self, name):
         self.name = name
         self.connected_clients = []
         self.connected_servers = []
-        self.connected_routers = []  # Для связи между роутерами
-        self.maximum_recieving = 5  # Максимальное количество подключений
+        self.connected_routers = []
+        self.max_connected = random.randint(5, 10)
         self.recieving_now = 0
 
     def add_client(self, client):
@@ -28,4 +30,4 @@ class Router:
             self.recieving_now -= 1
 
     def can_accept(self):
-        return self.recieving_now < self.maximum_recieving
+        return self.recieving_now < self.max_connected
