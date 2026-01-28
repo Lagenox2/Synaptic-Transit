@@ -1,12 +1,14 @@
 import pygame, sys, math, random
-import data, Levels.one_text, rendering
+import data, Levels.one_text, rendering, config
 from network import Network
 from client import Client
 from router import Router
 from server import Server
+import time
 
 data.network = Network()
 one_text = Levels.one_text
+
 
 def draw_logo(surface):
     cx, cy = data.width // 2, data.height // 2 - 420
@@ -25,6 +27,8 @@ def draw_logo(surface):
         y = cy + r * math.sin(angle) * 0.94
         points.append((x, y))
     pygame.draw.polygon(surface, color, points, line)
+
+
 def point_in_object(pos, obj):
     mx, my = pos
     x, y = obj['position']
@@ -49,41 +53,22 @@ def point_in_object(pos, obj):
         b3 = s((mx, my), p3, p1) < 0
         return b1 == b2 == b3
     return None
-def find_safe_position(objects, min_distance=75, attempts=100):
-    for _ in range(attempts):
-        x = random.randint(100, data.width - 100)
-        y = random.randint(100, data.height - 100)
-        safe = True
 
-        for obj in objects:
-            ox, oy = obj['position']
-            distance = math.hypot(x - ox, y - oy)
-            if distance < min_distance:
-                safe = False
-                break
 
-        if safe:
-            return (x, y)
-
-    return (random.randint(100, data.width - 100), random.randint(100, data.height - 100))
-def create_visual(node, obj_type, pos):
-    return {
-        'name': node.name,
-        'node': node,
-        'type': obj_type,
-        'position': pos,
-        'connections': [],
-        'radius': 32,
-        'size': 70,
-        'display_text': node.name,
-        'spawn': 0.0,
-        'unconnected_turns': 0
-    }
 def spawn_router_near(obj):
-    r = Router(f'R{len(data.network.routers) + 1}')
-    data.network.add_router(r)
     x, y = obj['position']
-    data.objects.append(create_visual(r, 'triangle', (x + 180, y + 60)))
+    # Пытаемся найти позицию справа и ниже
+    new_x, new_y = x + 180, y + 60
+
+    # Проверяем, что позиция в пределах экрана
+    if (data.safe_zone <= new_x <= data.width - data.safe_zone and
+            data.safe_zone <= new_y <= data.height - data.safe_zone):
+        return config.spawn_node(new_x, new_y, 'router')
+
+    # Если не удалось, ищем случайную позицию
+    return config.randspawn('router')
+
+
 def disconnect(a, b):
     a_name, b_name = a['name'], b['name']
     a['connections'] = [conn for conn in a['connections'] if conn['to'] != b_name]
@@ -97,54 +82,89 @@ def disconnect(a, b):
         nb.disconnect(na)
     elif isinstance(na, Server) and isinstance(nb, Router):
         na.disconnect(nb)
+
+
 def connect(a, b):
     na, nb = a['node'], b['node']
+
     if isinstance(na, Client) and isinstance(nb, Router):
         if not nb.can_accept():
             spawn_router_near(a)
             return
         na.connect(nb)
+    elif isinstance(na, Router) and isinstance(nb, Client):
+        if not na.can_accept():
+            spawn_router_near(b)
+            return
+        nb.connect(na)
     elif isinstance(na, Router) and isinstance(nb, Server):
         if not na.can_accept():
             return
         nb.connect(na)
+    elif isinstance(na, Server) and isinstance(nb, Router):
+        if not nb.can_accept():
+            return
+        na.connect(nb)
     else:
         return
+
+    # Добавляем визуальное соединение
     a['connections'].append({'to': b['name'], 'progress': 0.0, 'pulse': 0.0, 'path': []})
     b['connections'].append({'to': a['name'], 'progress': 1.0, 'pulse': 0.0, 'path': []})
+
+
 def check_client_connection(client_obj):
-    if client_obj['connections']:
+    if not isinstance(client_obj['node'], Client):
         return True
-    return False
+
+    client_node = client_obj['node']
+    required_server = client_obj.get('required_server')
+
+    if not required_server:
+        return True
+
+    server_obj = None
+    for obj in data.objects:
+        if obj['name'] == required_server and isinstance(obj['node'], Server):
+            server_obj = obj
+            break
+
+    if not server_obj:
+        return False
+
+    return client_node.has_path_to(server_obj['node'])
+
+
 def draw_objects(surface, objects, selected, dragging, start_point, path_points):
+    # Сначала рисуем все соединения
     for obj in objects:
         for conn in obj['connections']:
-            target = next(o for o in objects if o['name'] == conn['to'])
+            target = next((o for o in objects if o['name'] == conn['to']), None)
+            if not target:
+                continue
+
             x1, y1 = obj['position']
             x2, y2 = target['position']
             conn['progress'] = min(1.0, conn['progress'] + 0.035)
             conn['pulse'] += 0.2
-            px = x1 + (x2 - x1) * conn['progress']
-            py = y1 + (y2 - y1) * conn['progress']
-            w = 3 + int(abs(math.sin(conn['pulse'])) * 2)
-            pygame.draw.line(surface, data.white, (x1, y1), (px, py), w)
-            if w > 3:
-                pygame.draw.line(surface, data.white, (x1, y1), (px, py), w - 1)
 
-    if dragging and start_point and len(path_points) >= 1:
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        points = [start_point] + path_points + [(mouse_x, mouse_y)]
-        for i in range(len(points) - 1):
-            pygame.draw.line(surface, data.white, points[i], points[i + 1], 3)
-        if len(path_points) > 0:
-            pygame.draw.circle(surface, data.white, points[-1], 6, 2)
+            # Рисуем базовую линию под объектами
+            w = 3
+            pygame.draw.line(surface, data.white, (x1, y1), (x2, y2), w)
 
+            # Добавляем пульсацию
+            if w > 2:
+                pulse_w = w - 1
+                pygame.draw.line(surface, data.white, (x1, y1), (x2, y2), pulse_w)
+
+    # Затем рисуем все объекты поверх соединений
     for obj in objects:
         obj['spawn'] = min(1.0, obj['spawn'] + 0.05)
         scale = obj['spawn']
         x, y = obj['position']
         node = obj['node']
 
+        # Определяем цвет объекта
         if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
             blink_speed = 500
             current_time = pygame.time.get_ticks()
@@ -158,6 +178,7 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
         if isinstance(node, Router) and node.recieving_now >= node.maximum_recieving:
             color = data.bad
 
+        # Рисуем объект
         if obj['type'] == 'circle':
             pygame.draw.circle(surface, color, (int(x), int(y)), int(obj['radius'] * scale), 4)
         elif obj['type'] == 'square':
@@ -168,12 +189,35 @@ def draw_objects(surface, objects, selected, dragging, start_point, path_points)
         elif obj['type'] == 'triangle':
             h = int(obj['size'] * scale) // 2
             pygame.draw.polygon(surface, color, [(x, y - h), (x - h, y + h), (x + h, y + h)], 4)
+
+        # Рисуем текст
         if scale > 0.85:
-            surface.blit(data.object_font.render(obj['display_text'], True, data.white),
-                         data.object_font.render(obj['display_text'], True, data.white).get_rect(center=(x, y)))
+            text_surface = data.object_font.render(obj['display_text'], True, data.white)
+            text_rect = text_surface.get_rect(center=(x, y))
+            surface.blit(text_surface, text_rect)
+
+            # Для роутера показываем количество подключений
             if isinstance(node, Router):
-                txt = f'{node.recieving_now} / {node.maximum_recieving}'
-                surface.blit(data.small_font.render(txt, True, color), (x - 20, y + obj['size'] // 2 + 6))
+                txt = f'{node.recieving_now}/{node.maximum_recieving}'
+                txt_surface = data.small_font.render(txt, True, color)
+                txt_rect = txt_surface.get_rect(center=(x, y + obj['size'] // 2 + 10))
+                surface.blit(txt_surface, txt_rect)
+
+            # Для клиента показываем требуемый сервер
+            if isinstance(node, Client) and obj.get('required_server'):
+                server_text = f"→ {obj['required_server']}"
+                server_surface = data.small_font.render(server_text, True, (200, 200, 100))
+                server_rect = server_surface.get_rect(center=(x, y + obj['radius'] + 15))
+                surface.blit(server_surface, server_rect)
+
+    # Рисуем линию при перетаскивании
+    if dragging and start_point and len(path_points) >= 1:
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        points = [start_point] + path_points + [(mouse_x, mouse_y)]
+        for i in range(len(points) - 1):
+            pygame.draw.line(surface, data.white, points[i], points[i + 1], 3)
+        if len(path_points) > 0:
+            pygame.draw.circle(surface, data.white, points[-1], 6, 2)
 
 
 def start_game():
@@ -181,62 +225,84 @@ def start_game():
     data.client_counter = 2
     data.game_over = False
     data.game_over_timer = 0
-    data.network.clients.clear()
-    data.network.routers.clear()
-    data.network.servers.clear()
-    data.objects.clear()
-    c1 = Client('C1')
-    c2 = Client('C2')
-    r1 = Router('R1')
-    r2 = Router('R2')
-    s1 = Server('S1')
-    data.network.add_client(c1)
-    data.network.add_client(c2)
-    data.network.add_router(r1)
-    data.network.add_router(r2)
-    data.network.add_server(s1)
-    pos1 = find_safe_position(data.objects)
-    pos2 = find_safe_position(data.objects)
-    pos3 = find_safe_position(data.objects)
-    pos4 = find_safe_position(data.objects)
-    pos5 = find_safe_position(data.objects)
-    data.objects.extend([
-        create_visual(c1, 'circle', pos1),
-        create_visual(c2, 'circle', pos2),
-        create_visual(r1, 'triangle', pos3),
-        create_visual(r2, 'triangle', pos4),
-        create_visual(s1, 'square', pos5),
-    ])
+    data.last_turn_time = time.time()
+
+    # Очищаем все данные
+    config.reset_all()
+
+    # Создаем начальные объекты через config
+    # 2 клиента
+    client1 = config.randspawn('client')
+    client2 = config.randspawn('client')
+
+    # 2 роутера
+    router1 = config.randspawn('router')
+    router2 = config.randspawn('router')
+
+    # 2 сервера
+    server1 = config.randspawn('server')
+    server2 = config.randspawn('server')
+
+    # Назначаем клиентам требуемые серверы
+    if client1 and server1:
+        client1['required_server'] = server1['name']
+        client1['node'].required_server = server1['node']
+
+    if client2 and server2:
+        client2['required_server'] = server2['name']
+        client2['node'].required_server = server2['node']
+
+
+def assign_required_server(client_obj):
+    """Назначает клиенту случайный сервер"""
+    available_servers = [obj for obj in data.objects if obj['type'] == 'square']
+    if available_servers:
+        server = random.choice(available_servers)
+        client_obj['required_server'] = server['name']
+        client_obj['node'].required_server = server['node']
+        return True
+    return False
 
 
 def next_turn():
     data.turn += 1
     data.client_counter += 1
-    c = Client(f'C{data.client_counter}')
-    data.network.add_client(c)
-    x, y = find_safe_position(data.objects)
-    new_client = create_visual(c, 'circle', (x, y))
-    data.objects.append(new_client)
+
+    new_client = config.randspawn()
+
+    if new_client is None:
+        data.client_counter -= 1
+    else:
+        # Назначаем случайный сервер новому клиенту
+        assign_required_server(new_client)
+
+        # Увеличиваем счетчик клиентов в data
+        data.client_counter = len([obj for obj in data.objects if obj['type'] == 'circle'])
+
+    # Проверяем подключение всех клиентов (кроме нового)
+    for obj in data.objects:
+        if obj['type'] == 'circle' and isinstance(obj['node'], Client):
+            # Если это НЕ новый клиент
+            if obj != new_client:
+                if not check_client_connection(obj):
+                    obj['unconnected_turns'] += 1
+                    if obj['unconnected_turns'] >= 3:
+                        data.game_over = True
+                        data.game_over_timer = pygame.time.get_ticks()
+                else:
+                    obj['unconnected_turns'] = 0
 
     for obj in data.objects:
-        if obj['type'] == 'circle':
-            if not check_client_connection(obj):
-                obj['unconnected_turns'] += 1
-                if obj['unconnected_turns'] >= 3:
-                    data.game_over = True
-                    data.game_over_timer = pygame.time.get_ticks()
-            else:
-                obj['unconnected_turns'] = 0
+        if obj['type'] == 'circle' and isinstance(obj['node'], Client):
+            assign_required_server(obj)
 
-    if data.client_counter % 7 == 0:
-        r = Router(f'R{int(data.client_counter / 7 + 2)}')
-        data.network.add_router(r)
-        x, y = find_safe_position(data.objects)
-        data.objects.append(create_visual(r, 'triangle', (x, y)))
+    if data.client_counter % 10 == 0:
+        config.randspawn('router')
+
+    data.last_turn_time = time.time()
 
 
 def main():
-
     new_game_btn = rendering.Button('Новая игра', data.height // 2 + 40)
     exit_btn = rendering.Button('Выход', data.height // 2 + 150)
     next_turn_btn = rendering.Button('Следующий ход', data.height // 2 + 150)
@@ -251,7 +317,12 @@ def main():
     tutorial = Levels.one_text.Tutorial()
 
     while True:
+        current_time = time.time()
         data.screen.fill(data.black)
+
+        # Автоматическая смена хода каждые 10 секунд
+        if started and not data.game_over and current_time - data.last_turn_time >= 10:
+            next_turn()
 
         if data.game_over:
             overlay = pygame.Surface((data.width, data.height), pygame.SRCALPHA)
@@ -281,13 +352,23 @@ def main():
         else:
             draw_objects(data.screen, data.objects, selected, dragging, start_point, path_points)
             next_turn_btn.draw(data.screen)
+
+            # Отображаем информацию о ходе и таймере
             data.screen.blit(data.small_font.render(f'Ход: {data.turn}', True, data.white), (20, 20))
 
+            # Таймер до следующего хода
+            time_left = max(0, 10 - (current_time - data.last_turn_time))
+            timer_text = f'Следующий ход через: {time_left:.1f}с'
+            data.screen.blit(data.small_font.render(timer_text, True, data.white), (20, 50))
+
+            # Предупреждения для клиентов
+            warning_y = 80
             for obj in data.objects:
                 if obj['type'] == 'circle' and obj['unconnected_turns'] > 0:
-                    warning_text = f"Клиент {obj['display_text']}: {obj['unconnected_turns']}/3"
+                    warning_text = f"Клиент {obj['display_text']}: {obj['unconnected_turns']}/3 → {obj.get('required_server', '?')}"
                     warning_surface = data.small_font.render(warning_text, True, (255, 0, 0))
-                    data.screen.blit(warning_surface, (20, 50 + data.objects.index(obj) * 25))
+                    data.screen.blit(warning_surface, (20, warning_y))
+                    warning_y += 25
 
         if data.tutorial_active and started and not data.game_over:
             tutorial.draw(data.screen, data.tutorial_step)
@@ -362,10 +443,11 @@ def main():
                         for obj in data.objects:
                             if point_in_object(event.pos, obj):
                                 for conn in obj['connections']:
-                                    target = next(o for o in data.objects if o['name'] == conn['to'])
-                                    disconnect(obj, target)
-                                    selected = None
-                                    break
+                                    target = next((o for o in data.objects if o['name'] == conn['to']), None)
+                                    if target:
+                                        disconnect(obj, target)
+                                        selected = None
+                                        break
                                 else:
                                     selected = None
                                 break

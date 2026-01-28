@@ -1,16 +1,14 @@
 class Server:
     def __init__(self, name):
         self.name = name
-        self.connections = []
+        self.connected_routers = []
 
     def connect(self, router):
-        if router.name not in self.connections:
-            if router.accept_connection(self):
-                self.connections.append(router.name)
-                return True
-        return False
+        if router not in self.connected_routers:
+            self.connected_routers.append(router)
+            router.connect_server(self)
 
     def disconnect(self, router):
-        if router.name in self.connections:
-            self.connections.remove(router.name)
-            router.remove_connection(self)
+        if router in self.connected_routers:
+            self.connected_routers.remove(router)
+            router.disconnect_server(self)
